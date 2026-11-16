@@ -68,14 +68,28 @@ export async function POST(req: Request) {
         return `https://${path}`;
       };
 
-      const getValidDate = (val?: string) => {
+      const getValidDate = (val?: string | null) => {
         if (val && !isNaN(new Date(val).getTime())) {
           return new Date(val).toISOString();
         }
-        return new Date().toISOString();
+        return null;
       };
 
-      const watchedAt = getValidDate(raw.watched_at || raw.last_watched_at || raw.created_at || raw.updated_at);
+      // Prioritas tanggal:
+      // 1. raw.watched_at / last_watched_at / created_at
+      // 2. Tanggal rilis film/episode (released / first_aired)
+      // 3. Tahun rilis film/serial (year)
+      // 4. Fallback 1970-01-01 (arsip lama, BUKAN tanggal hari ini)
+      const rawDate = raw.watched_at || raw.last_watched_at || raw.created_at;
+      const releaseDate = movie?.released || episode?.first_aired;
+      const year = movie?.year || show?.year;
+      const yearDate = year ? `${year}-01-01T00:00:00.000Z` : null;
+
+      const watchedAt = 
+        getValidDate(rawDate) || 
+        getValidDate(releaseDate) || 
+        getValidDate(yearDate) || 
+        new Date(0).toISOString();
 
       if (isMovie && movie) {
         return {
