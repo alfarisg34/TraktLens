@@ -8,8 +8,23 @@ export async function GET(req: Request) {
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
     const type = searchParams.get('type') || undefined;
+    const genre = searchParams.get('genre') || undefined;
+    const sort = searchParams.get('sort') || undefined;
+    const minRuntimeStr = searchParams.get('minRuntime');
+    const maxRuntimeStr = searchParams.get('maxRuntime');
 
-    const data = await getWatchHistory({ startDate, endDate, type });
+    const minRuntime = minRuntimeStr ? parseInt(minRuntimeStr, 10) : undefined;
+    const maxRuntime = maxRuntimeStr ? parseInt(maxRuntimeStr, 10) : undefined;
+
+    const data = await getWatchHistory({ 
+      startDate, 
+      endDate, 
+      type, 
+      genre, 
+      minRuntime, 
+      maxRuntime, 
+      sort 
+    });
 
     // Calculate Summary Stats
     const items = data.items;
@@ -48,6 +63,7 @@ export async function GET(req: Request) {
       user: data.user,
       isNeon: data.isNeon,
       availableYears: (data as any).availableYears || [],
+      availableGenres: (data as any).availableGenres || [],
       summary: {
         totalItems: items.length,
         movieCount,

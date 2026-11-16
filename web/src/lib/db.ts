@@ -170,7 +170,17 @@ export async function saveSyncData(user: UserProfile, items: WatchItem[]) {
   }
 }
 
-export async function getWatchHistory(filters?: { startDate?: string; endDate?: string; type?: string }) {
+export interface HistoryFilters {
+  startDate?: string;
+  endDate?: string;
+  type?: string;
+  genre?: string;
+  minRuntime?: number;
+  maxRuntime?: number;
+  sort?: string;
+}
+
+export async function getWatchHistory(filters?: HistoryFilters) {
   const sql = getDb();
 
   if (sql) {
@@ -178,6 +188,9 @@ export async function getWatchHistory(filters?: { startDate?: string; endDate?: 
     const startDateParam = filters?.startDate ? new Date(filters.startDate).toISOString() : null;
     const endDateParam = filters?.endDate ? new Date(filters.endDate).toISOString() : null;
     const typeParam = filters?.type && filters.type !== 'all' ? filters.type : null;
+    const genreParam = filters?.genre && filters.genre !== 'all' ? filters.genre : null;
+    const minRuntimeParam = typeof filters?.minRuntime === 'number' ? filters.minRuntime : null;
+    const maxRuntimeParam = typeof filters?.maxRuntime === 'number' ? filters.maxRuntime : null;
 
     const userRows = await sql`SELECT * FROM users LIMIT 1`;
     const yearRows = await sql`
@@ -187,18 +200,41 @@ export async function getWatchHistory(filters?: { startDate?: string; endDate?: 
     `;
     const availableYears = yearRows.map((r: any) => r.year).filter((y: any) => typeof y === 'number' && !isNaN(y));
 
+    // Dynamic sorting
+    let orderBy = sql`ORDER BY watched_at DESC`;
+    if (filters?.sort === 'oldest') {
+      orderBy = sql`ORDER BY watched_at ASC`;
+    } else if (filters?.sort === 'runtime_desc') {
+      orderBy = sql`ORDER BY runtime_minutes DESC, watched_at DESC`;
+    } else if (filters?.sort === 'runtime_asc') {
+      orderBy = sql`ORDER BY runtime_minutes ASC, watched_at DESC`;
+    }
+
     const items = (await sql`
       SELECT * FROM watch_history
       WHERE (${startDateParam}::timestamptz IS NULL OR watched_at >= ${startDateParam}::timestamptz)
         AND (${endDateParam}::timestamptz IS NULL OR watched_at <= ${endDateParam}::timestamptz)
         AND (${typeParam}::text IS NULL OR type = ${typeParam}::text)
-      ORDER BY watched_at DESC
+        AND (${genreParam}::text IS NULL OR genres::text ILIKE '%' || ${genreParam} || '%')
+        AND (${minRuntimeParam}::integer IS NULL OR runtime_minutes >= ${minRuntimeParam}::integer)
+        AND (${maxRuntimeParam}::integer IS NULL OR runtime_minutes <= ${maxRuntimeParam}::integer)
+      ${orderBy}
     `) as WatchItem[];
+
+    // Extract available genres from full dataset
+    const genreRows = await sql`
+      SELECT DISTINCT jsonb_array_elements_text(genres) as genre
+      FROM watch_history
+      WHERE genres IS NOT NULL AND jsonb_array_length(genres) > 0
+      ORDER BY genre ASC
+    `;
+    const availableGenres = genreRows.map((r: any) => r.genre).filter(Boolean);
 
     return {
       user: userRows[0] || null,
       items,
       availableYears,
+      availableGenres,
       isNeon: true
     };
   } else {
@@ -206,6 +242,12 @@ export async function getWatchHistory(filters?: { startDate?: string; endDate?: 
     const availableYears = Array.from(
       new Set(data.items.map(it => new Date(it.watched_at).getFullYear()))
     ).filter(y => typeof y === 'number' && !isNaN(y)).sort((a, b) => b - a);
+
+    const genreSet = new Set<string>();
+    data.items.forEach(it => {
+      if (Array.isArray(it.genres)) it.genres.forEach(g => genreSet.add(g));
+    });
+    const availableGenres = Array.from(genreSet).sort();
 
     let items = data.items;
 
@@ -220,11 +262,31 @@ export async function getWatchHistory(filters?: { startDate?: string; endDate?: 
     if (filters?.type && filters.type !== 'all') {
       items = items.filter(it => it.type === filters.type);
     }
+    if (filters?.genre && filters.genre !== 'all') {
+      items = items.filter(it => Array.isArray(it.genres) && it.genres.includes(filters.genre!));
+    }
+    if (typeof filters?.minRuntime === 'number') {
+      items = items.filter(it => (it.runtime_minutes || 0) >= filters.minRuntime!);
+    }
+    if (typeof filters?.maxRuntime === 'number') {
+      items = items.filter(it => (it.runtime_minutes || 0) <= filters.maxRuntime!);
+    }
+
+    if (filters?.sort === 'oldest') {
+      items.sort((a, b) => new Date(a.watched_at).getTime() - new Date(b.watched_at).getTime());
+    } else if (filters?.sort === 'runtime_desc') {
+      items.sort((a, b) => (b.runtime_minutes || 0) - (a.runtime_minutes || 0));
+    } else if (filters?.sort === 'runtime_asc') {
+      items.sort((a, b) => (a.runtime_minutes || 0) - (b.runtime_minutes || 0));
+    } else {
+      items.sort((a, b) => new Date(b.watched_at).getTime() - new Date(a.watched_at).getTime());
+    }
 
     return {
       user: data.user,
       items,
       availableYears,
+      availableGenres,
       isNeon: false
     };
   }

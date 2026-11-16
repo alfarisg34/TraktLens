@@ -10,13 +10,16 @@ import {
   Filter, 
   RefreshCw, 
   Sparkles, 
-  PlayCircle,
-  ExternalLink,
-  Layers,
-  Database,
-  Search,
-  Star,
-  MoreVertical
+  PlayCircle, 
+  ExternalLink, 
+  Layers, 
+  Database, 
+  Search, 
+  Star, 
+  SlidersHorizontal, 
+  X, 
+  RotateCcw, 
+  Check 
 } from 'lucide-react';
 
 interface WatchItem {
@@ -54,12 +57,17 @@ export default function Dashboard() {
   const [isNeon, setIsNeon] = useState(false);
   const [loading, setLoading] = useState(true);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
 
-  // Filters
+  // Drawer & Filter States
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [preset, setPreset] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'episode'>('all');
+  const [selectedGenre, setSelectedGenre] = useState<string>('all');
+  const [durationFilter, setDurationFilter] = useState<'all' | 'short' | 'medium' | 'long'>('all');
+  const [sortOrder, setSortOrder] = useState<'latest' | 'oldest' | 'runtime_desc' | 'runtime_asc'>('latest');
   const [searchQuery, setSearchQuery] = useState('');
 
   const fetchHistory = async () => {
@@ -69,6 +77,17 @@ export default function Dashboard() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
       if (typeFilter !== 'all') params.append('type', typeFilter);
+      if (selectedGenre !== 'all') params.append('genre', selectedGenre);
+      if (sortOrder !== 'latest') params.append('sort', sortOrder);
+
+      if (durationFilter === 'short') {
+        params.append('maxRuntime', '30');
+      } else if (durationFilter === 'medium') {
+        params.append('minRuntime', '31');
+        params.append('maxRuntime', '90');
+      } else if (durationFilter === 'long') {
+        params.append('minRuntime', '91');
+      }
 
       const res = await fetch(`/api/history?${params.toString()}`);
       const data = await res.json();
@@ -80,6 +99,9 @@ export default function Dashboard() {
         if (data.availableYears && data.availableYears.length > 0) {
           setAvailableYears(data.availableYears);
         }
+        if (data.availableGenres && data.availableGenres.length > 0) {
+          setAvailableGenres(data.availableGenres);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch history:', err);
@@ -90,7 +112,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchHistory();
-  }, [startDate, endDate, typeFilter]);
+  }, [startDate, endDate, typeFilter, selectedGenre, durationFilter, sortOrder]);
 
   const handlePreset = (p: 'all' | '7d' | '30d') => {
     setPreset(p);
@@ -116,6 +138,26 @@ export default function Dashboard() {
     setStartDate(`${year}-01-01`);
     setEndDate(`${year}-12-31`);
   };
+
+  const handleResetFilters = () => {
+    setTypeFilter('all');
+    setSelectedGenre('all');
+    setDurationFilter('all');
+    setSortOrder('latest');
+    setStartDate('');
+    setEndDate('');
+    setPreset('all');
+  };
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (typeFilter !== 'all') count++;
+    if (selectedGenre !== 'all') count++;
+    if (durationFilter !== 'all') count++;
+    if (sortOrder !== 'latest') count++;
+    if (startDate || endDate) count++;
+    return count;
+  }, [typeFilter, selectedGenre, durationFilter, sortOrder, startDate, endDate]);
 
   const displayYears = useMemo(() => {
     if (availableYears.length > 0) return availableYears;
@@ -151,9 +193,9 @@ export default function Dashboard() {
   }, [items, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#090c13] text-[#f0f3f8] antialiased">
+    <div className="min-h-screen bg-[#090c13] text-[#f0f3f8] antialiased relative">
       {/* Top Header Navbar */}
-      <header className="sticky top-0 z-50 border-b border-[#1b2234] bg-[#0c101a]/95 backdrop-blur-md px-4 lg:px-8 py-3">
+      <header className="sticky top-0 z-40 border-b border-[#1b2234] bg-[#0c101a]/95 backdrop-blur-md px-4 lg:px-8 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#ed1c24] flex items-center justify-center font-black text-white text-base shadow-md shadow-[#ed1c24]/40">
@@ -258,12 +300,14 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Filter Bar */}
-        <section className="bg-[#121622] border border-[#1d2537] rounded-xl p-4 lg:p-6 space-y-4 shadow-lg shadow-black/20">
+        {/* Filter Bar & Controls */}
+        <section className="bg-[#121622] border border-[#1d2537] rounded-xl p-4 lg:p-5 space-y-4 shadow-lg shadow-black/20">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-[#ed1c24]" />
-              <span className="text-xs font-bold uppercase tracking-wider text-white">Filter & Pencarian</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#a0afc2] flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#ed1c24]" />
+                <span>Rentang Waktu</span>
+              </span>
             </div>
 
             {/* Presets Bar */}
@@ -328,59 +372,44 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-3 border-t border-[#1b2234]">
-            <div>
-              <label className="block text-[11px] font-semibold text-[#7e8d9f] uppercase mb-1">Cari Judul</label>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-[#58687d]" />
-                <input
-                  type="text"
-                  placeholder="Ketik nama film atau serial..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-[#090c13] border border-[#1f283d] rounded-lg text-xs text-white placeholder-[#58687d] focus:border-[#ed1c24] outline-none"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-[#7e8d9f] uppercase mb-1">Mulai Tanggal</label>
+          {/* Search Bar + Drawer Trigger */}
+          <div className="pt-3 border-t border-[#1b2234] flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#58687d]" />
               <input
-                type="date"
-                value={startDate}
-                onChange={(e) => {
-                  setStartDate(e.target.value);
-                  setPreset('custom');
-                }}
-                className="w-full px-3 py-2 bg-[#090c13] border border-[#1f283d] rounded-lg text-xs text-white focus:border-[#ed1c24] outline-none"
+                type="text"
+                placeholder="Cari judul film, serial, atau episode..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2 bg-[#090c13] border border-[#1f283d] rounded-xl text-xs text-white placeholder-[#58687d] focus:border-[#ed1c24] outline-none transition"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-[#58687d] hover:text-white cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-[#7e8d9f] uppercase mb-1">Sampai Tanggal</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setPreset('custom');
-                }}
-                className="w-full px-3 py-2 bg-[#090c13] border border-[#1f283d] rounded-lg text-xs text-white focus:border-[#ed1c24] outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-[#7e8d9f] uppercase mb-1">Tipe Media</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as any)}
-                className="w-full px-3 py-2 bg-[#090c13] border border-[#1f283d] rounded-lg text-xs text-white focus:border-[#ed1c24] outline-none"
-              >
-                <option value="all">Semua (Film & Serial)</option>
-                <option value="movie">Hanya Film</option>
-                <option value="episode">Hanya Serial / Episode</option>
-              </select>
-            </div>
+            {/* Trakt Filter Drawer Trigger Button */}
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                activeFilterCount > 0
+                  ? 'bg-[#ed1c24] text-white border-[#ed1c24] shadow-md shadow-[#ed1c24]/30'
+                  : 'bg-[#151c2a] text-[#8e9cae] hover:text-white border-[#222c42] hover:bg-[#1e273a]'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Filter</span>
+              {activeFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-white text-[#ed1c24] text-[10px] font-black flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
         </section>
 
@@ -471,7 +500,7 @@ export default function Dashboard() {
                                 {item.title}
                               </h4>
                               <button 
-                                className="text-[#5a6a7e] hover:text-[#ed1c24] transition p-0.5"
+                                className="text-[#5a6a7e] hover:text-[#ed1c24] transition p-0.5 cursor-pointer"
                                 title="Rating"
                               >
                                 <Star className="w-3.5 h-3.5" />
@@ -516,6 +545,255 @@ export default function Dashboard() {
           )}
         </section>
       </main>
+
+      {/* Trakt-Style Slide-over Filter Drawer */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop Blur Overlay */}
+          <div 
+            onClick={() => setIsDrawerOpen(false)}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full sm:w-[420px] bg-[#0c101a] border-l border-[#1d2537] h-full flex flex-col z-10 shadow-2xl overflow-hidden animate-in slide-in-from-right duration-200">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-5 border-b border-[#1b2234]">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-[#ed1c24]" />
+                <h2 className="text-base font-bold text-white tracking-wide">Filter TraktLens</h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleResetFilters}
+                  title="Setel ulang semua filter"
+                  className="p-1.5 rounded-lg text-[#768496] hover:text-[#ed1c24] hover:bg-[#161c2b] transition cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  title="Tutup Filter"
+                  className="p-1.5 rounded-lg text-[#768496] hover:text-white hover:bg-[#161c2b] transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* 1. Tipe Media (Segmented) */}
+              <div className="space-y-2.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#79889b] block">
+                  Tipe Media
+                </label>
+                <div className="grid grid-cols-3 gap-2 bg-[#080b11] p-1 rounded-xl border border-[#1b2234]">
+                  <button
+                    onClick={() => setTypeFilter('all')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer text-center ${
+                      typeFilter === 'all' 
+                        ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/40' 
+                        : 'text-[#7e8d9f] hover:text-white'
+                    }`}
+                  >
+                    Semua
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('movie')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer text-center ${
+                      typeFilter === 'movie' 
+                        ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/40' 
+                        : 'text-[#7e8d9f] hover:text-white'
+                    }`}
+                  >
+                    Film
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('episode')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer text-center ${
+                      typeFilter === 'episode' 
+                        ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/40' 
+                        : 'text-[#7e8d9f] hover:text-white'
+                    }`}
+                  >
+                    Serial
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. Genre Filter */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-[#79889b]">
+                    Genre Media
+                  </label>
+                  {selectedGenre !== 'all' && (
+                    <button 
+                      onClick={() => setSelectedGenre('all')}
+                      className="text-[10px] text-[#ed1c24] hover:underline cursor-pointer"
+                    >
+                      Reset Genre
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-1.5 bg-[#080b11] rounded-xl border border-[#1b2234]">
+                  <button
+                    onClick={() => setSelectedGenre('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      selectedGenre === 'all'
+                        ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/30'
+                        : 'bg-[#121724] text-[#8e9cae] hover:text-white hover:bg-[#1a2233]'
+                    }`}
+                  >
+                    Semua Genre
+                  </button>
+                  {availableGenres.map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setSelectedGenre(g)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer capitalize ${
+                        selectedGenre === g
+                          ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/30 font-bold'
+                          : 'bg-[#121724] text-[#8e9cae] hover:text-white hover:bg-[#1a2233]'
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Durasi Tontonan */}
+              <div className="space-y-2.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#79889b] block">
+                  Durasi Menit
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setDurationFilter('all')}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer text-left ${
+                      durationFilter === 'all'
+                        ? 'bg-[#ed1c24] border-[#ed1c24] text-white font-bold'
+                        : 'bg-[#080b11] border-[#1b2234] text-[#8e9cae] hover:text-white'
+                    }`}
+                  >
+                    Semua Durasi
+                  </button>
+                  <button
+                    onClick={() => setDurationFilter('short')}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer text-left ${
+                      durationFilter === 'short'
+                        ? 'bg-[#ed1c24] border-[#ed1c24] text-white font-bold'
+                        : 'bg-[#080b11] border-[#1b2234] text-[#8e9cae] hover:text-white'
+                    }`}
+                  >
+                    &lt; 30 Menit (Sitcom)
+                  </button>
+                  <button
+                    onClick={() => setDurationFilter('medium')}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer text-left ${
+                      durationFilter === 'medium'
+                        ? 'bg-[#ed1c24] border-[#ed1c24] text-white font-bold'
+                        : 'bg-[#080b11] border-[#1b2234] text-[#8e9cae] hover:text-white'
+                    }`}
+                  >
+                    30 - 90 Menit (Drama)
+                  </button>
+                  <button
+                    onClick={() => setDurationFilter('long')}
+                    className={`py-2 px-3 rounded-lg text-xs font-semibold border transition cursor-pointer text-left ${
+                      durationFilter === 'long'
+                        ? 'bg-[#ed1c24] border-[#ed1c24] text-white font-bold'
+                        : 'bg-[#080b11] border-[#1b2234] text-[#8e9cae] hover:text-white'
+                    }`}
+                  >
+                    &gt; 90 Menit (Film)
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. Urutan Tontonan */}
+              <div className="space-y-2.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#79889b] block">
+                  Urutan Data
+                </label>
+                <div className="space-y-1.5 bg-[#080b11] p-1.5 rounded-xl border border-[#1b2234]">
+                  {[
+                    { id: 'latest', label: 'Terbaru Ditonton (Default)' },
+                    { id: 'oldest', label: 'Terlama Ditonton' },
+                    { id: 'runtime_desc', label: 'Durasi Terpanjang (Desc)' },
+                    { id: 'runtime_asc', label: 'Durasi Terpendek (Asc)' },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSortOrder(s.id as any)}
+                      className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition cursor-pointer ${
+                        sortOrder === s.id
+                          ? 'bg-[#ed1c24] text-white font-bold'
+                          : 'text-[#8e9cae] hover:text-white hover:bg-[#121724]'
+                      }`}
+                    >
+                      <span>{s.label}</span>
+                      {sortOrder === s.id && <Check className="w-3.5 h-3.5 text-white" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 5. Custom Date Range */}
+              <div className="space-y-2.5 pt-2 border-t border-[#1b2234]">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#79889b] block">
+                  Rentang Tanggal Khusus
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-[#768496] mb-1">Dari Tanggal</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setPreset('custom');
+                      }}
+                      className="w-full px-3 py-2 bg-[#080b11] border border-[#1b2234] rounded-lg text-xs text-white focus:border-[#ed1c24] outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#768496] mb-1">Sampai Tanggal</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => {
+                        setEndDate(e.target.value);
+                        setPreset('custom');
+                      }}
+                      className="w-full px-3 py-2 bg-[#080b11] border border-[#1b2234] rounded-lg text-xs text-white focus:border-[#ed1c24] outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-[#1b2234] bg-[#090c13] flex items-center gap-3">
+              <button
+                onClick={handleResetFilters}
+                className="flex-1 py-2.5 rounded-xl border border-[#232d42] text-xs font-bold text-[#8e9cae] hover:text-white hover:bg-[#151c2a] transition cursor-pointer"
+              >
+                Reset Filter
+              </button>
+              <button
+                onClick={() => setIsDrawerOpen(false)}
+                className="flex-1 py-2.5 rounded-xl bg-[#ed1c24] hover:bg-[#ff2a33] text-xs font-bold text-white shadow-lg shadow-[#ed1c24]/30 transition cursor-pointer"
+              >
+                Tutup & Terapkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="mt-20 border-t border-[#171d2b] py-8 text-center text-xs text-[#5e6d80] space-y-1">
