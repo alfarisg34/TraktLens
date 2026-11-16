@@ -63,7 +63,7 @@ function writeLocalData(data: { user: UserProfile | null; items: WatchItem[] }) 
 let sqlClient: NeonQueryFunction<false, false> | null = null;
 
 export function getDb() {
-  const dbUrl = process.env.DATABASE_URL;
+  const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL;
   if (dbUrl && !sqlClient) {
     sqlClient = neon(dbUrl);
   }
