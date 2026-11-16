@@ -345,3 +345,23 @@ export async function getWatchHistory(filters?: HistoryFilters) {
     };
   }
 }
+
+export async function deleteHistoryItem(id: string | number) {
+  const sql = getDb();
+  if (sql) {
+    await initDbSchema();
+    await sql`DELETE FROM watch_history WHERE id = ${id}`;
+    return { mode: 'neon', success: true, deletedId: id };
+  } else {
+    const operation = localWriteQueue.then(async () => {
+      let current = readLocalData();
+      current.items = current.items.filter(it => String(it.id) !== String(id));
+      const content = JSON.stringify(current, null, 2);
+      await safeWriteLocalFile(content);
+      return { mode: 'local', success: true, deletedId: id, total: current.items.length };
+    });
+
+    localWriteQueue = operation.catch(() => {});
+    return await operation;
+  }
+}

@@ -1,6 +1,41 @@
 // src/app/api/history/route.ts
 import { NextResponse } from 'next/server';
-import { getWatchHistory } from '@/lib/db';
+import { getWatchHistory, deleteHistoryItem } from '@/lib/db';
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Parameter id diperlukan' },
+        { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } }
+      );
+    }
+
+    const res = await deleteHistoryItem(id);
+    return NextResponse.json(
+      res,
+      { headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
+  }
+}
 
 export async function GET(req: Request) {
   try {

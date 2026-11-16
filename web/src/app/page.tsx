@@ -34,7 +34,8 @@ import {
   Milestone,
   Activity,
   Percent,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from 'lucide-react';
 
 interface WatchItem {
@@ -317,6 +318,27 @@ export default function Dashboard() {
     setStartDate('');
     setEndDate('');
     setPreset('all');
+  };
+
+  const handleDeleteItem = async (id: string | number, title: string) => {
+    if (!window.confirm(`Hapus "${title}" dari database riwayat tontonan?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/history?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setItems(prev => prev.filter(it => String(it.id) !== String(id)));
+        if (summary) {
+          setSummary(prev => prev ? { ...prev, totalItems: Math.max(0, prev.totalItems - 1) } : null);
+        }
+      } else {
+        const err = await res.json();
+        alert(`Gagal menghapus: ${err.error || 'Terjadi kesalahan'}`);
+      }
+    } catch (e: any) {
+      alert(`Gagal menghapus: ${e.message}`);
+    }
   };
 
   const activeFilterCount = useMemo(() => {
@@ -1431,12 +1453,24 @@ export default function Dashboard() {
                               <h4 className="text-[13px] font-bold text-white line-clamp-1 group-hover:text-[#ed1c24] transition">
                                 {item.title}
                               </h4>
-                              <button 
-                                className="text-[#5a6a7e] hover:text-[#ed1c24] transition p-0.5 cursor-pointer"
-                                title="Rating"
-                              >
-                                <Star className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteItem(item.id, item.title);
+                                  }}
+                                  className="text-[#4e5c70] hover:text-[#ef4444] transition p-0.5 cursor-pointer opacity-0 group-hover:opacity-100"
+                                  title="Hapus riwayat tontonan ini dari database"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                  className="text-[#5a6a7e] hover:text-[#ed1c24] transition p-0.5 cursor-pointer"
+                                  title="Rating"
+                                >
+                                  <Star className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
 
                             {isEpisode ? (
