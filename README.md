@@ -13,6 +13,7 @@ Sistem pelacakan dan analisis riwayat tontonan personal dari [Trakt.tv](https://
 trakt.tv-extention/
 ├── extension/             # Ekstensi Google Chrome (Manifest V3)
 │   ├── manifest.json
+│   ├── background.js      # Service Worker sinkronisasi mandiri latar belakang
 │   ├── popup.html
 │   ├── popup.css
 │   ├── popup.js

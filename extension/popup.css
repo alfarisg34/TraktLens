@@ -222,6 +222,39 @@ body {
   font-size: 11px;
   color: var(--text-muted);
   text-align: center;
+  word-break: break-word;
+}
+
+.status-text.running {
+  color: #60a5fa;
+}
+
+.status-text.success {
+  color: #34d399;
+}
+
+.status-text.error {
+  color: #f87171;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid rgba(237, 28, 36, 0.4);
+  color: #ff6b6b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 8px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: rgba(237, 28, 36, 0.15);
+  border-color: #ed1c24;
+  color: #ffffff;
 }
 
 .footer-actions {

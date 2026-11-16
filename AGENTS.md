@@ -63,10 +63,11 @@ Repository ini menggunakan struktur monorepo terpisah:
 trakt.tv-extention/
 ├── extension/
 │   ├── manifest.json       # Manifest V3 konfigurasi ekstensi
-│   ├── content.js          # Ekstraktor sesi OIDC & pemanggil API Trakt
+│   ├── background.js       # Service worker ekstraksi & sinkronisasi latar belakang mandiri
+│   ├── content.js          # Ekstraktor sesi OIDC Trakt
 │   ├── popup.html          # UI popup ekstensi
 │   ├── popup.css           # Styling popup Trakt dark-theme
-│   └── popup.js            # Logika trigger & komunikasi pesan ekstensi
+│   └── popup.js            # Controller UI popup & komunikasi background
 ├── web/
 │   ├── src/
 │   │   ├── app/

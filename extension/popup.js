@@ -1,4 +1,7 @@
-// popup.js - Trakt Watch Summary Sync
+// popup.js - TraktLens Popup Controller
+// Mengirim perintah sinkronisasi ke Background Service Worker (background.js)
+// agar proses ekstraksi tetap berjalan lancar di belakang layar (background)
+// meskipun popup ditutup, tab berpindah, atau browser di-minimize.
 
 document.addEventListener('DOMContentLoaded', async () => {
   const targetUrlInput = document.getElementById('target-url');
@@ -8,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const startDateInput = document.getElementById('start-date');
   const endDateInput = document.getElementById('end-date');
   const btnSync = document.getElementById('btn-sync');
+  const btnCancel = document.getElementById('btn-cancel');
   const btnOpenWeb = document.getElementById('btn-open-web');
   const userStatusPill = document.getElementById('user-status-pill');
   const userNameEl = document.getElementById('user-name');
@@ -15,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const progressBar = document.getElementById('progress-bar');
   const statusText = document.getElementById('status-text');
 
-  // Load saved target URL
+  // 1. Muat URL tersimpan
   const stored = await chrome.storage.local.get(['targetUrl']);
   if (stored.targetUrl) {
     targetUrlInput.value = stored.targetUrl;
@@ -37,61 +41,103 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.tabs.create({ url: targetUrlInput.value.trim() });
   });
 
-  // Cari tab trakt
-  async function getTraktTab() {
-    const tabs = await chrome.tabs.query({ url: '*://app.trakt.tv/*' });
-    return tabs.length > 0 ? tabs[0] : null;
-  }
-
-  // Periksa status login trakt
-  let activeTab = await getTraktTab();
-
-  if (!activeTab) {
-    userStatusPill.className = 'status-pill offline';
-    userNameEl.textContent = 'Buka app.trakt.tv';
-    btnSync.disabled = true;
-    statusText.textContent = 'Buka app.trakt.tv terlebih dahulu di salah satu tab browser.';
-    progressContainer.classList.remove('hidden');
-  } else {
+  // 2. Periksa status login di tab app.trakt.tv
+  async function checkTraktTabStatus() {
     try {
-      chrome.tabs.sendMessage(activeTab.id, { action: 'GET_SESSION' }, (response) => {
-        if (chrome.runtime.lastError || !response || !response.success) {
-          userStatusPill.className = 'status-pill offline';
-          userNameEl.textContent = 'Belum Login';
-          btnSync.disabled = true;
-          statusText.textContent = 'Silakan login di tab app.trakt.tv terlebih dahulu.';
-          progressContainer.classList.remove('hidden');
-        } else {
-          userStatusPill.className = 'status-pill online';
-          userNameEl.textContent = response.user.username;
-          btnSync.disabled = false;
-        }
+      const tabs = await chrome.tabs.query({ url: '*://app.trakt.tv/*' });
+      if (!tabs || tabs.length === 0) {
+        userStatusPill.className = 'status-pill offline';
+        userNameEl.textContent = 'Buka app.trakt.tv';
+        return false;
+      }
+
+      return new Promise((resolve) => {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'GET_SESSION' }, (response) => {
+          if (chrome.runtime.lastError || !response || !response.success) {
+            userStatusPill.className = 'status-pill offline';
+            userNameEl.textContent = 'Belum Login';
+            resolve(false);
+          } else {
+            userStatusPill.className = 'status-pill online';
+            userNameEl.textContent = response.user.username;
+            resolve(true);
+          }
+        });
       });
-    } catch (e) {
+    } catch {
       userStatusPill.className = 'status-pill offline';
       userNameEl.textContent = 'Koneksi error';
+      return false;
     }
   }
 
-  // Action sync
+  await checkTraktTabStatus();
+
+  // 3. Render Status Sinkronisasi dari Background
+  function renderSyncState(state) {
+    if (!state) return;
+
+    if (state.isRunning) {
+      progressContainer.classList.remove('hidden');
+      btnCancel.classList.remove('hidden');
+      btnSync.disabled = true;
+      btnSync.innerHTML = '<span>⏳ Sinkronisasi Berjalan di Background...</span>';
+
+      const pct = Math.max(0, Math.min(100, Math.round(state.progress || 0)));
+      progressBar.style.width = `${pct}%`;
+      progressBar.style.background = '#ed1c24';
+
+      statusText.className = 'status-text running';
+      statusText.textContent = state.message || `Memproses di background (${pct}%)...`;
+    } else {
+      btnCancel.classList.add('hidden');
+      btnSync.disabled = false;
+      btnSync.innerHTML = '<span class="icon">🔄</span><span>Ekstrak & Sinkronkan</span>';
+
+      if (state.status === 'success') {
+        progressContainer.classList.remove('hidden');
+        progressBar.style.width = '100%';
+        progressBar.style.background = '#10b981';
+        statusText.className = 'status-text success';
+        statusText.textContent = state.message || 'Sinkronisasi berhasil!';
+      } else if (state.status === 'error') {
+        progressContainer.classList.remove('hidden');
+        progressBar.style.width = '100%';
+        progressBar.style.background = '#ef4444';
+        statusText.className = 'status-text error';
+        statusText.textContent = state.message || 'Terjadi kesalahan saat sinkronisasi.';
+      } else if (state.status === 'idle' && !state.message) {
+        progressContainer.classList.add('hidden');
+      }
+    }
+  }
+
+  // Muat status background awal saat popup dibuka
+  const stateRes = await chrome.storage.local.get(['syncState']);
+  if (stateRes.syncState) {
+    renderSyncState(stateRes.syncState);
+  }
+
+  // Dengarkan pembaruan real-time dari background worker
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.syncState) {
+      renderSyncState(changes.syncState.newValue);
+    }
+  });
+
+  // 4. Tombol Mulai Sinkronisasi
   btnSync.addEventListener('click', async () => {
-    activeTab = await getTraktTab();
-    if (!activeTab) {
-      alert('Tab app.trakt.tv tidak ditemukan!');
+    const isOnline = await checkTraktTabStatus();
+    if (!isOnline) {
+      alert('Tab app.trakt.tv belum aktif atau Anda belum login!\nBuka app.trakt.tv terlebih dahulu di salah satu tab browser.');
       return;
     }
 
-    btnSync.disabled = true;
-    progressContainer.classList.remove('hidden');
-    progressBar.style.width = '15%';
-    statusText.textContent = 'Mengecek status sinkronisasi...';
-
-    // Hitung tanggal
     let startDate = null;
     let endDate = null;
-    let stopAtTimestamp = null;
-    const targetUrl = targetUrlInput.value.replace(/\/$/, '');
+    const targetUrl = targetUrlInput.value.trim().replace(/\/$/, '');
     const preset = datePresetSelect.value;
+    const incremental = incrementalSyncInput.checked;
 
     if (preset === 'custom') {
       if (startDateInput.value) startDate = startDateInput.value;
@@ -101,104 +147,42 @@ document.addEventListener('DOMContentLoaded', async () => {
       const d = new Date();
       d.setDate(d.getDate() - days);
       startDate = d.toISOString();
-    } else if (incrementalSyncInput && incrementalSyncInput.checked) {
-      // Smart Incremental Sync: cek timestamp tontonan terakhir di database
-      try {
-        statusText.textContent = 'Mengecek tontonan terakhir di database...';
-        const checkRes = await fetch(`${targetUrl}/api/sync`);
-        if (checkRes.ok) {
-          const checkData = await checkRes.json();
-          if (checkData.latestWatchedAt) {
-            stopAtTimestamp = checkData.latestWatchedAt;
-            const lastDate = new Date(stopAtTimestamp).toLocaleString('id-ID', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            });
-            statusText.textContent = `Sinkronisasi Cerdas: mengambil data baru sejak ${lastDate}...`;
-          }
-        }
-      } catch (e) {
-        console.log('Incremental check skipped:', e.message);
-      }
     }
 
-    progressBar.style.width = '30%';
-    chrome.tabs.sendMessage(activeTab.id, {
-      action: 'EXTRACT_HISTORY',
-      startDate,
-      endDate,
-      stopAtTimestamp,
-      maxItems: 50000
-    }, async (res) => {
-      if (chrome.runtime.lastError || !res || !res.success) {
-        progressBar.style.width = '0%';
-        statusText.textContent = 'Gagal: ' + (res?.error || chrome.runtime.lastError?.message || 'Unknown error');
-        btnSync.disabled = false;
-        return;
+    // Tampilkan status awal di UI
+    progressContainer.classList.remove('hidden');
+    progressBar.style.width = '5%';
+    progressBar.style.background = '#ed1c24';
+    statusText.className = 'status-text running';
+    statusText.textContent = 'Memulai proses di background service worker...';
+    btnSync.disabled = true;
+
+    // Perintahkan background.js untuk memulai proses di background
+    chrome.runtime.sendMessage({
+      action: 'START_SYNC',
+      options: {
+        targetUrl,
+        preset,
+        startDate,
+        endDate,
+        incremental
       }
-
-      if (res.total === 0) {
-        progressBar.style.width = '100%';
-        statusText.textContent = 'Semua data sudah mutakhir! Tidak ada tontonan baru untuk disinkronkan.';
-        btnSync.disabled = false;
-        return;
-      }
-
-      progressBar.style.width = '60%';
-      statusText.textContent = `Ditemukan ${res.total} tontonan baru. Mengirim ke Web...`;
-
-      try {
-        const targetUrl = targetUrlInput.value.replace(/\/$/, '');
-        const items = res.items || [];
-        const CHUNK_SIZE = 150;
-        const totalChunks = Math.ceil(items.length / CHUNK_SIZE);
-        let totalUploaded = 0;
-
-        for (let i = 0; i < totalChunks; i++) {
-          const chunk = items.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-          const percent = 60 + Math.round(((i + 1) / totalChunks) * 38);
-          progressBar.style.width = `${percent}%`;
-          statusText.textContent = `Mengirim ke database (${i + 1}/${totalChunks})... ${Math.min((i + 1) * CHUNK_SIZE, items.length)}/${items.length} item`;
-
-          const response = await fetch(`${targetUrl}/api/sync`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              user: res.user,
-              items: chunk
-            })
-          });
-
-          if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errText.slice(0, 120)}`);
-          }
-
-          const json = await response.json();
-          if (!json.success) {
-            throw new Error(json.error || `Gagal di batch ${i + 1}`);
-          }
-          totalUploaded += json.savedCount || chunk.length;
-
-          // Jeda kecil agar I/O disk lokal dan koneksi stabil
-          if (i < totalChunks - 1) {
-            await new Promise(r => setTimeout(r, 60));
-          }
-        }
-
-        progressBar.style.width = '100%';
-        statusText.textContent = `Selesai! Berhasil menyimpan ${totalUploaded} item ke database cloud.`;
-      } catch (err) {
-        progressBar.style.width = '50%';
-        statusText.textContent = `Gagal upload ke Web (${err.message}). Pastikan server Web berjalan!`;
-      } finally {
+    }, (res) => {
+      if (chrome.runtime.lastError) {
+        statusText.className = 'status-text error';
+        statusText.textContent = 'Gagal mengirim sinyal ke background worker: ' + chrome.runtime.lastError.message;
         btnSync.disabled = false;
       }
+    });
+  });
+
+  // 5. Tombol Batalkan Sinkronisasi
+  btnCancel.addEventListener('click', () => {
+    btnCancel.disabled = true;
+    btnCancel.textContent = 'Membatalkan...';
+    chrome.runtime.sendMessage({ action: 'CANCEL_SYNC' }, () => {
+      btnCancel.disabled = false;
+      btnCancel.textContent = 'Batalkan Proses';
     });
   });
 });

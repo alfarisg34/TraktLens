@@ -46,6 +46,36 @@ Setiap catatan rilis dikelompokkan ke dalam label-label terstandarisasi:
 
 ## 🚀 Riwayat Rilis Resmi
 
+### [v0.2.0] — 2026-11-16
+> **Background Service Worker, Bento Grid Fakta Unik & Rekor Tontonan, Toggle Ranking Serial, dan Branding Logo TraktLens**
+
+#### `FEAT` (Fitur Baru)
+* **Background Service Worker Mandiri (`extension/background.js`)**:
+  * Seluruh proses ekstraksi dari Trakt API dan pengunggahan data chunk ke Web Dashboard kini berjalan 100% di latar belakang via Chrome Extension Manifest V3 Service Worker.
+  * Proses sinkronisasi kebal terhadap penutupan popup, perpindahan tab, maupun minimize browser.
+  * **Indikator Badge Toolbar Chrome**: Menampilkan persentase progress live (`%`) di toolbar, tanda centang hijau (`✓`) saat tuntas, dan tanda seru (`!`) jika terjadi kendala.
+  * **Sinkronisasi State Dua Arah**: UI pop-up membaca progress langsung dari `chrome.storage.local` dan mendengarkan event `chrome.storage.onChanged`.
+  * **Tombol Pembatalan (Abort Controller)**: Pengguna dapat membatalkan proses yang sedang berjalan kapan saja secara aman.
+* **Fakta Unik & Rekor Tontonan (Bento Grid 10 Kartu)**:
+  * Pemisahan kartu ekstrim film menjadi dua kartu simetris 3-item: **Top 3 Film Terpanjang** dan **Top 3 Film Terpendek** dilengkapi poster, durasi, dan genre.
+  * **Toggle Urutan Serial Terfavorit**: Pengguna dapat beralih ranking antara **Jumlah Episode Terbanyak** (misal *The Big Bang Theory* 280 ep) dan **Total Waktu Terlama** (misal *The Flash* 92j, *The Rookie* 90j), dilengkapi badge Juara #1 dan progress bar relatif.
+  * **Filter Rekor Tahun In-Section**: Tab pil horizontal tahunan instan (`Semua Waktu`, `2026`, `2025`, `2024`, `2023`, `2022`, `2021`, `2011`) dengan counter tontonan dan banner Year-in-Review.
+  * **Analisis Binge Realistis**: Membedakan hari maraton tontonan nyata (durasi $\le$ 24 jam) dengan arsip impor bulk.
+  * **Metrik Komprehensif**: Rasio film vs episode (durasi & kuantitas), distribusi hari produktif, dan zona prime-time jam tonton (WIB).
+
+#### `FIX` (Perbaikan Bug & Stabilitas)
+* **Penyelesaian Masalah File Locking Windows di `db.ts`**:
+  * Memperbaiki galat `HTTP 500 UNKNOWN: unknown error, open 'history.json'` saat ekstensi mengirim data tontonan berurutan.
+  * Menerapkan teknik *Atomic Temporary Write* (`.tmp_...` + atomic copy/replace) serta *Exponential Retry Backoff* hingga 15x percobaan.
+* **Penanganan Update Riwayat Tontonan Trakt**:
+  * Menyinkronkan pembaruan tanggal tontonan historis (misal film *In Time* ke 7 Desember 2022 pukul 15.17 WIB) dan membersihkan ID duplikat lama Trakt.
+
+#### `UI` (Antarmuka & Branding)
+* **Branding Logo & Favicon Resmi TraktLens**:
+  * Menggantikan favicon default Next.js (`N` hitam) pada browser tab dengan logo resmi TraktLens (kotak merah berhuruf **T** putih menyala) pada `app/icon.png`, `apple-icon.png`, dan `favicon.ico`.
+
+---
+
 ### [v0.1.0] — 2026-11-16
 > **Inisialisasi TraktLens: Ekstensi Manifest V3, Web Dashboard Dark Mode Trakt, dan Filter Tahun Dinamis**
 

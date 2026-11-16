@@ -6,8 +6,12 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "host_permissions": [
     "https://app.trakt.tv/*",
     "https://apiz.trakt.tv/*",

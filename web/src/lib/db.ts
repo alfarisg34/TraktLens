@@ -45,26 +45,69 @@ function ensureLocalFile() {
   }
 }
 
-function readLocalData(): { user: UserProfile | null; items: WatchItem[] } {
-  try {
-    ensureLocalFile();
-    const raw = fs.readFileSync(LOCAL_DATA_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return { user: null, items: [] };
+function sleep(ms: number) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function safeWriteLocalFile(content: string, maxAttempts = 15): Promise<void> {
+  ensureLocalFile();
+  const tempFile = path.join(LOCAL_DATA_DIR, `.tmp_${Date.now()}_${Math.random().toString(36).slice(2)}.json`);
+
+  // Step 1: Write to temp file first (never collides with watchers of history.json)
+  fs.writeFileSync(tempFile, content, 'utf-8');
+
+  // Step 2: Atomic copy/replace with generous retry loop for Windows file handles
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      fs.copyFileSync(tempFile, LOCAL_DATA_FILE);
+      try {
+        fs.unlinkSync(tempFile);
+      } catch {}
+      return;
+    } catch (err: any) {
+      if (attempt === maxAttempts - 1) {
+        try {
+          fs.unlinkSync(tempFile);
+        } catch {}
+        try {
+          fs.writeFileSync(LOCAL_DATA_FILE, content, 'utf-8');
+          return;
+        } catch {
+          throw err;
+        }
+      }
+      await sleep(100 + attempt * 50);
+    }
   }
+}
+
+function readLocalData(): { user: UserProfile | null; items: WatchItem[] } {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      ensureLocalFile();
+      const raw = fs.readFileSync(LOCAL_DATA_FILE, 'utf-8');
+      if (raw && raw.trim().length > 0) {
+        return JSON.parse(raw);
+      }
+    } catch {
+      if (attempt === 9) return { user: null, items: [] };
+      const start = Date.now();
+      while (Date.now() - start < 30) {}
+    }
+  }
+  return { user: null, items: [] };
 }
 
 function writeLocalData(data: { user: UserProfile | null; items: WatchItem[] }) {
   ensureLocalFile();
-  fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  try {
+    fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    safeWriteLocalFile(JSON.stringify(data, null, 2)).catch(console.error);
+  }
 }
 
 let localWriteQueue: Promise<any> = Promise.resolve();
-
-function sleep(ms: number) {
-  return new Promise(r => setTimeout(r, ms));
-}
 
 let sqlClient: NeonQueryFunction<false, false> | null = null;
 
@@ -170,17 +213,8 @@ export async function saveSyncData(user: UserProfile, items: WatchItem[]) {
 
       const content = JSON.stringify({ user, items: updatedItems }, null, 2);
 
-      // Retry up to 5 times if Windows file lock is active
-      for (let attempt = 0; attempt < 5; attempt++) {
-        try {
-          ensureLocalFile();
-          fs.writeFileSync(LOCAL_DATA_FILE, content, 'utf-8');
-          break;
-        } catch (err: any) {
-          if (attempt === 4) throw err;
-          await sleep(100 * (attempt + 1));
-        }
-      }
+      // Safe atomic write with backoff queue
+      await safeWriteLocalFile(content);
 
       return { mode: 'local', count: items.length, total: updatedItems.length };
     });
