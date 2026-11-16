@@ -19,7 +19,16 @@ import {
   SlidersHorizontal, 
   X, 
   RotateCcw, 
-  Check 
+  Check,
+  Trophy,
+  Flame,
+  Repeat,
+  Zap,
+  Award,
+  Sun,
+  Moon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 interface WatchItem {
@@ -50,9 +59,60 @@ interface SummaryData {
   genresBreakdown: [string, number][];
 }
 
+interface FunFactsData {
+  longestMovie: {
+    title: string;
+    slug: string;
+    runtimeMinutes: number;
+    formattedDuration: string;
+    poster_url?: string | null;
+    genres?: string[];
+  } | null;
+  shortestMovie: {
+    title: string;
+    slug: string;
+    runtimeMinutes: number;
+    formattedDuration: string;
+    poster_url?: string | null;
+    genres?: string[];
+  } | null;
+  topShows: Array<{
+    title: string;
+    slug?: string;
+    episodes: number;
+    runtimeMinutes: number;
+    formattedDuration: string;
+    poster_url?: string | null;
+  }>;
+  rewatchedMovies: Array<{
+    title: string;
+    slug: string;
+    count: number;
+    poster_url?: string | null;
+  }>;
+  busiestDay: {
+    day: string;
+    count: number;
+  };
+  peakHour: {
+    hour: number;
+    formatted: string;
+    count: number;
+    persona: string;
+  };
+  recordBingeDay: {
+    date: string;
+    formattedDate: string;
+    count: number;
+    formattedDuration: string;
+  } | null;
+}
+
 export default function Dashboard() {
   const [items, setItems] = useState<WatchItem[]>([]);
   const [summary, setSummary] = useState<SummaryData | null>(null);
+  const [funFacts, setFunFacts] = useState<FunFactsData | null>(null);
+  const [showFunFacts, setShowFunFacts] = useState(true);
   const [user, setUser] = useState<{ username: string; avatar_url?: string } | null>(null);
   const [isNeon, setIsNeon] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -94,6 +154,9 @@ export default function Dashboard() {
       if (data.success) {
         setItems(data.items);
         setSummary(data.summary);
+        if (data.funFacts) {
+          setFunFacts(data.funFacts);
+        }
         setUser(data.user);
         setIsNeon(data.isNeon);
         if (data.availableYears && data.availableYears.length > 0) {
@@ -299,6 +362,334 @@ export default function Dashboard() {
             <p className="text-xs text-[#79889b] mt-2">Aktivitas Terarsip</p>
           </div>
         </section>
+
+        {/* Fun Facts & Records Bento Grid */}
+        {funFacts && (
+          <section className="bg-[#10141f] border border-[#1c2436] rounded-2xl p-5 lg:p-6 space-y-5 shadow-xl shadow-black/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#ed1c24]/10 border border-[#ed1c24]/30 text-[#ed1c24]">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                    <span>Fakta Unik & Rekor Tontonan</span>
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#1c2538] text-[#8e9cae] border border-[#2b374e] uppercase tracking-wider">
+                      Personal Records
+                    </span>
+                  </h2>
+                  <p className="text-xs text-[#79889b] mt-0.5">
+                    Statistik superlatif film terpanjang, serial terfavorit, rewatch, dan kebiasaan menonton Anda
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowFunFacts(!showFunFacts)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141a27] hover:bg-[#1e273b] border border-[#232d42] text-xs font-semibold text-[#8e9cae] hover:text-white transition cursor-pointer"
+              >
+                <span>{showFunFacts ? 'Sembunyikan' : 'Tampilkan'}</span>
+                {showFunFacts ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {showFunFacts && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                {/* 1. Rekor Film: Terpanjang vs Terpendek */}
+                <div className="bg-[#121622] border border-[#1e273b] rounded-xl p-4 flex flex-col justify-between hover:border-[#ed1c24]/40 transition space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#1b2234] pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8e9cae] flex items-center gap-1.5">
+                      <Film className="w-3.5 h-3.5 text-[#ed1c24]" />
+                      <span>Film Terpanjang & Terpendek</span>
+                    </span>
+                    <span className="text-[10px] text-[#52637a] font-medium">Durasi Menit</span>
+                  </div>
+
+                  {funFacts.longestMovie ? (
+                    <div className="space-y-3">
+                      {/* Terpanjang */}
+                      <div className="flex items-center gap-3 bg-[#0a0d14] p-2.5 rounded-lg border border-[#1a2233]">
+                        {funFacts.longestMovie.poster_url ? (
+                          <img 
+                            src={funFacts.longestMovie.poster_url} 
+                            alt={funFacts.longestMovie.title}
+                            className="w-10 h-14 object-cover rounded shadow shrink-0" 
+                          />
+                        ) : (
+                          <div className="w-10 h-14 bg-[#1b2234] rounded flex items-center justify-center shrink-0">
+                            <Film className="w-5 h-5 text-[#4e5f78]" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[10px] font-bold text-[#ed1c24] uppercase tracking-wider block">
+                            Terpanjang ({funFacts.longestMovie.formattedDuration})
+                          </span>
+                          <h4 className="text-xs font-bold text-white truncate" title={funFacts.longestMovie.title}>
+                            {funFacts.longestMovie.title}
+                          </h4>
+                          <span className="text-[10px] text-[#79889b]">
+                            {funFacts.longestMovie.runtimeMinutes} menit • {funFacts.longestMovie.genres?.slice(0, 2).join(', ') || 'Film'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Terpendek */}
+                      {funFacts.shortestMovie && (
+                        <div className="flex items-center gap-3 bg-[#0a0d14] p-2.5 rounded-lg border border-[#1a2233]">
+                          {funFacts.shortestMovie.poster_url ? (
+                            <img 
+                              src={funFacts.shortestMovie.poster_url} 
+                              alt={funFacts.shortestMovie.title}
+                              className="w-10 h-14 object-cover rounded shadow shrink-0" 
+                            />
+                          ) : (
+                            <div className="w-10 h-14 bg-[#1b2234] rounded flex items-center justify-center shrink-0">
+                              <Film className="w-5 h-5 text-[#4e5f78]" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                              Terpendek ({funFacts.shortestMovie.formattedDuration})
+                            </span>
+                            <h4 className="text-xs font-bold text-white truncate" title={funFacts.shortestMovie.title}>
+                              {funFacts.shortestMovie.title}
+                            </h4>
+                            <span className="text-[10px] text-[#79889b]">
+                              {funFacts.shortestMovie.runtimeMinutes} menit • {funFacts.shortestMovie.genres?.slice(0, 2).join(', ') || 'Film Pendek'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#52637a] py-4 text-center">Belum ada data film di rentang ini</p>
+                  )}
+                </div>
+
+                {/* 2. Series Paling Banyak Ditonton (Binge Champion) */}
+                <div className="bg-[#121622] border border-[#1e273b] rounded-xl p-4 flex flex-col justify-between hover:border-indigo-500/40 transition space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#1b2234] pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8e9cae] flex items-center gap-1.5">
+                      <Tv className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Serial Terfavorit (Top Series)</span>
+                    </span>
+                    <span className="text-[10px] text-[#52637a] font-medium">Binge Rank</span>
+                  </div>
+
+                  {funFacts.topShows && funFacts.topShows.length > 0 ? (
+                    <div className="space-y-2">
+                      {/* Rank 1 Feature */}
+                      <div className="flex items-center gap-3 bg-[#0a0d14] p-2.5 rounded-lg border border-indigo-500/20">
+                        {funFacts.topShows[0].poster_url ? (
+                          <img 
+                            src={funFacts.topShows[0].poster_url} 
+                            alt={funFacts.topShows[0].title}
+                            className="w-10 h-14 object-cover rounded shadow shrink-0" 
+                          />
+                        ) : (
+                          <div className="w-10 h-14 bg-[#1b2234] rounded flex items-center justify-center shrink-0">
+                            <Tv className="w-5 h-5 text-indigo-400" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              #1 JUARA
+                            </span>
+                            <span className="text-[10px] font-bold text-indigo-400">
+                              {funFacts.topShows[0].episodes} Episode
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-white truncate mt-0.5" title={funFacts.topShows[0].title}>
+                            {funFacts.topShows[0].title}
+                          </h4>
+                          <span className="text-[10px] text-[#79889b]">
+                            Total {funFacts.topShows[0].formattedDuration} menonton
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Rank 2 & 3 */}
+                      <div className="space-y-1.5 pt-1">
+                        {funFacts.topShows.slice(1, 3).map((show, idx) => (
+                          <div key={show.title} className="flex items-center justify-between text-xs py-1 px-2 rounded bg-[#0e121b] border border-[#182030]">
+                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                              <span className="text-[10px] font-bold text-[#5c6e88] w-4">#{idx + 2}</span>
+                              <span className="text-white font-medium truncate text-xs" title={show.title}>
+                                {show.title}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-semibold text-indigo-300 shrink-0">
+                              {show.episodes} ep ({show.formattedDuration})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#52637a] py-4 text-center">Belum ada serial di rentang ini</p>
+                  )}
+                </div>
+
+                {/* 3. Film yang Ditonton Lebih Dari Sekali (Rewatch) */}
+                <div className="bg-[#121622] border border-[#1e273b] rounded-xl p-4 flex flex-col justify-between hover:border-emerald-500/40 transition space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#1b2234] pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8e9cae] flex items-center gap-1.5">
+                      <Repeat className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Ditonton Lebih dari Sekali</span>
+                    </span>
+                    <span className="text-[10px] text-[#52637a] font-medium">Rewatch</span>
+                  </div>
+
+                  {funFacts.rewatchedMovies && funFacts.rewatchedMovies.length > 0 ? (
+                    <div className="space-y-2">
+                      {funFacts.rewatchedMovies.map((movie) => (
+                        <div key={movie.title} className="flex items-center justify-between bg-[#0a0d14] p-2.5 rounded-lg border border-[#1a2233]">
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            {movie.poster_url ? (
+                              <img src={movie.poster_url} alt={movie.title} className="w-7 h-10 object-cover rounded shrink-0" />
+                            ) : (
+                              <div className="w-7 h-10 bg-[#1b2234] rounded flex items-center justify-center shrink-0">
+                                <Film className="w-3.5 h-3.5 text-[#52637a]" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-white truncate" title={movie.title}>
+                                {movie.title}
+                              </h4>
+                              <span className="text-[10px] text-[#79889b]">Film diputar berulang</span>
+                            </div>
+                          </div>
+                          <span className="px-2 py-1 rounded-md text-[11px] font-extrabold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                            {movie.count}x Ditonton
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-[#0a0d14] p-4 rounded-lg border border-[#1a2233] text-center my-auto">
+                      <Repeat className="w-6 h-6 text-[#354359] mx-auto mb-1.5" />
+                      <p className="text-xs text-[#8e9cae] font-medium">Belum Ada Rewatch</p>
+                      <p className="text-[10px] text-[#52637a] mt-0.5">Semua judul film di rentang ini baru ditonton 1 kali.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Rekor Maraton Tergila (Single-Day Binge) */}
+                <div className="bg-[#121622] border border-[#1e273b] rounded-xl p-4 flex flex-col justify-between hover:border-amber-500/40 transition space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#1b2234] pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8e9cae] flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Rekor Maraton Tergila (1 Hari)</span>
+                    </span>
+                    <span className="text-[10px] text-[#52637a] font-medium">Peak Binge</span>
+                  </div>
+
+                  {funFacts.recordBingeDay ? (
+                    <div className="bg-[#0a0d14] p-4 rounded-lg border border-amber-500/20 relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-3 text-amber-500/10 group-hover:text-amber-500/20 transition">
+                        <Flame className="w-16 h-16" />
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+                        Tontonan Terbanyak dalam 24 Jam
+                      </span>
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-3xl font-black text-white">{funFacts.recordBingeDay.count}</span>
+                        <span className="text-xs font-semibold text-[#8e9cae]">aktivitas tontonan</span>
+                      </div>
+                      <div className="mt-2.5 pt-2 border-t border-[#1a2233] flex items-center justify-between text-xs">
+                        <span className="text-[#a0afc2] font-semibold">{funFacts.recordBingeDay.formattedDate}</span>
+                        <span className="text-amber-400 font-bold">{funFacts.recordBingeDay.formattedDuration} total</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#52637a] py-4 text-center">Belum ada rekor maraton</p>
+                  )}
+                </div>
+
+                {/* 5. Kebiasaan Waktu & Persona Nonton */}
+                <div className="bg-[#121622] border border-[#1e273b] rounded-xl p-4 flex flex-col justify-between hover:border-purple-500/40 transition space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#1b2234] pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8e9cae] flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Kebiasaan & Persona Nonton</span>
+                    </span>
+                    <span className="text-[10px] text-[#52637a] font-medium">WIB Routine</span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="bg-[#0a0d14] p-3 rounded-lg border border-[#1a2233] flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-semibold text-[#667790] uppercase tracking-wider block">
+                          Hari Paling Produktif
+                        </span>
+                        <h4 className="text-sm font-extrabold text-white mt-0.5">
+                          Hari {funFacts.busiestDay.day}
+                        </h4>
+                      </div>
+                      <span className="px-2 py-1 rounded bg-[#161d2d] text-xs font-bold text-purple-300 border border-[#232e47]">
+                        {funFacts.busiestDay.count} tontonan
+                      </span>
+                    </div>
+
+                    <div className="bg-[#0a0d14] p-3 rounded-lg border border-[#1a2233] flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-semibold text-[#667790] uppercase tracking-wider block">
+                          Jam Puncak Menonton
+                        </span>
+                        <h4 className="text-sm font-extrabold text-white mt-0.5">
+                          {funFacts.peakHour.formatted}
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-1 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                        {funFacts.peakHour.persona}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 6. Top Genre Leaderboard */}
+                <div className="bg-[#121622] border border-[#1e273b] rounded-xl p-4 flex flex-col justify-between hover:border-sky-500/40 transition space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#1b2234] pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#8e9cae] flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Genre Paling Mendominasi</span>
+                    </span>
+                    <span className="text-[10px] text-[#52637a] font-medium">Top Categories</span>
+                  </div>
+
+                  {summary && summary.genresBreakdown.length > 0 ? (
+                    <div className="space-y-2">
+                      {summary.genresBreakdown.slice(0, 4).map(([genreName, count], idx) => {
+                        const topCount = summary.genresBreakdown[0][1] || 1;
+                        const pct = Math.round((count / topCount) * 100);
+                        return (
+                          <div key={genreName} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold text-white flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold text-[#5c6e88]">#{idx + 1}</span>
+                                <span>{genreName}</span>
+                              </span>
+                              <span className="text-[10px] font-bold text-sky-400">{count} item</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#0a0d14] rounded-full overflow-hidden border border-[#1b2234]">
+                              <div 
+                                className="h-full bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full transition-all duration-500"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#52637a] py-4 text-center">Belum ada kategori tontonan</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Filter Bar & Controls */}
         <section className="bg-[#121622] border border-[#1d2537] rounded-xl p-4 lg:p-5 space-y-4 shadow-lg shadow-black/20">
