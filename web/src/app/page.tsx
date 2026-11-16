@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { 
   Film, 
   Tv, 
@@ -164,9 +165,13 @@ export default function Dashboard() {
                   <span className="text-white">Trakt</span>
                   <span className="text-[#ed1c24]">Lens</span>
                 </h1>
-                <span className="text-[10px] font-semibold bg-[#1a2130] text-[#8e9cae] border border-[#27324a] px-2 py-0.5 rounded-full">
-                  v1.0
-                </span>
+                <Link
+                  href="/changelog"
+                  className="text-[10px] font-semibold bg-[#1a2130] text-[#8e9cae] hover:text-[#ed1c24] hover:border-[#ed1c24]/50 border border-[#27324a] px-2 py-0.5 rounded-full transition flex items-center gap-1"
+                  title="Lihat Catatan Rilis & Log Versi"
+                >
+                  v0.1.0
+                </Link>
               </div>
               <p className="text-[11px] text-[#768496]">Personal Watch History & Analytics</p>
             </div>
@@ -501,12 +506,17 @@ export default function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-20 border-t border-[#171d2b] py-8 text-center text-xs text-[#5e6d80]">
+      <footer className="mt-20 border-t border-[#171d2b] py-8 text-center text-xs text-[#5e6d80] space-y-1">
         <p className="font-medium text-[#768496]">
           <span className="text-white font-semibold">Trakt</span>
           <span className="text-[#ed1c24] font-semibold">Lens</span> • Didesain dengan estetika Trakt.tv
         </p>
-        <p className="mt-1">Ditenagai oleh Next.js, Vercel & Neon Database</p>
+        <p>Ditenagai oleh Next.js, Vercel & Neon Database</p>
+        <p className="pt-2">
+          <Link href="/changelog" className="text-[#7e8d9f] hover:text-[#ed1c24] transition underline underline-offset-4">
+            Lihat Catatan Rilis & Aturan Versi (Changelog) →
+          </Link>
+        </p>
       </footer>
     </div>
   );
