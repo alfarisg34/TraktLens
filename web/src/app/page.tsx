@@ -266,53 +266,65 @@ export default function Dashboard() {
               <span className="text-xs font-bold uppercase tracking-wider text-white">Filter & Pencarian</span>
             </div>
 
-            {/* Presets */}
-            <div className="flex flex-wrap items-center gap-1.5 bg-[#0a0d14] p-1 rounded-lg border border-[#1f283d]">
-              <button
-                onClick={() => handlePreset('all')}
-                className={`px-3 py-1 rounded text-xs font-semibold transition cursor-pointer ${
-                  preset === 'all' 
-                    ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/50' 
-                    : 'text-[#7e8d9f] hover:text-white'
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                onClick={() => handlePreset('7d')}
-                className={`px-3 py-1 rounded text-xs font-semibold transition cursor-pointer ${
-                  preset === '7d' 
-                    ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/50' 
-                    : 'text-[#7e8d9f] hover:text-white'
-                }`}
-              >
-                7 Hari
-              </button>
-              <button
-                onClick={() => handlePreset('30d')}
-                className={`px-3 py-1 rounded text-xs font-semibold transition cursor-pointer ${
-                  preset === '30d' 
-                    ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/50' 
-                    : 'text-[#7e8d9f] hover:text-white'
-                }`}
-              >
-                30 Hari
-              </button>
-
-              {/* Dynamic Years based on actual data */}
-              {displayYears.map((year) => (
+            {/* Presets Bar */}
+            <div className="flex items-center gap-1.5 bg-[#0a0d14] p-1.5 rounded-xl border border-[#1e273b] max-w-full overflow-x-auto">
+              {/* Group 1: Quick Ranges */}
+              <div className="flex items-center gap-1 shrink-0">
                 <button
-                  key={year}
-                  onClick={() => handleYear(year)}
-                  className={`px-3 py-1 rounded text-xs font-semibold transition cursor-pointer ${
-                    preset === `year-${year}`
-                      ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/50' 
-                      : 'text-[#7e8d9f] hover:text-white'
+                  onClick={() => handlePreset('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    preset === 'all' 
+                      ? 'bg-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/30' 
+                      : 'text-[#8291a4] hover:text-white hover:bg-[#151c2a]'
                   }`}
                 >
-                  Tahun {year}
+                  Semua
                 </button>
-              ))}
+                <button
+                  onClick={() => handlePreset('7d')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    preset === '7d' 
+                      ? 'bg-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/30' 
+                      : 'text-[#8291a4] hover:text-white hover:bg-[#151c2a]'
+                  }`}
+                >
+                  7 Hari
+                </button>
+                <button
+                  onClick={() => handlePreset('30d')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    preset === '30d' 
+                      ? 'bg-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/30' 
+                      : 'text-[#8291a4] hover:text-white hover:bg-[#151c2a]'
+                  }`}
+                >
+                  30 Hari
+                </button>
+              </div>
+
+              {/* Subtle Divider */}
+              <div className="h-4 w-px bg-[#20293d] mx-1 shrink-0" />
+
+              {/* Group 2: Dynamic Years */}
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#52637a] pl-1 pr-1.5 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-[#52637a]" />
+                  <span className="hidden sm:inline">Tahun:</span>
+                </span>
+                {displayYears.map((year) => (
+                  <button
+                    key={year}
+                    onClick={() => handleYear(year)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                      preset === `year-${year}`
+                        ? 'bg-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/30 font-bold' 
+                        : 'text-[#8291a4] hover:text-white hover:bg-[#151c2a]'
+                    }`}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
