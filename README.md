@@ -80,9 +80,12 @@ Jika ingin menggunakan database cloud Neon:
 ---
 
 ### 5. Deploy ke Vercel
-1. Push repositori ini ke GitHub.
-2. Import proyek di dashboard [Vercel](https://vercel.com).
-3. Set **Root Directory** ke: `web`.
-4. Masukkan Environment Variable `DATABASE_URL` (dari Neon).
-5. Klik **Deploy**.
-6. Setelah selesai, buka popup ekstensi Chrome dan ubah *Target Web Dashboard URL* ke domain Vercel Anda (misal: `https://my-trakt-summary.vercel.app`).
+Aplikasi sudah terdeploy secara otomatis ke Vercel di domain produksi:
+👉 **[https://trakt-lens.vercel.app](https://trakt-lens.vercel.app)**
+
+1. Repositori GitHub: [alfarisg34/TraktLens](https://github.com/alfarisg34/TraktLens).
+2. Root Directory disetel ke: `web`.
+3. Database Neon PostgreSQL (`neon-aqua-park` di region Singapore `sin1`) telah terhubung secara otomatis ke Vercel via Storage integration.
+4. Skema database tabel `users` dan `watch_history` telah berhasil dibuat dan siap menerima sinkronisasi data cloud.
+5. Untuk menyinkronkan data langsung ke cloud, buka popup ekstensi Chrome dan ubah *Target Web Dashboard URL* menjadi:
+   `https://trakt-lens.vercel.app`
