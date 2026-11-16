@@ -261,9 +261,11 @@ export default function Dashboard() {
       <header className="sticky top-0 z-40 border-b border-[#1b2234] bg-[#0c101a]/95 backdrop-blur-md px-4 lg:px-8 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#ed1c24] flex items-center justify-center font-black text-white text-base shadow-md shadow-[#ed1c24]/40">
-              T
-            </div>
+            <img 
+              src="/logo.svg" 
+              alt="TraktLens" 
+              className="w-8 h-8 rounded-lg shadow-md shadow-[#ed1c24]/40 shrink-0" 
+            />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm lg:text-base font-bold tracking-tight text-white flex items-center gap-1.5">
