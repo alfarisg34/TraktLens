@@ -124,9 +124,11 @@ export async function saveSyncData(user: UserProfile, items: WatchItem[]) {
         updated_at = NOW();
     `;
 
-    // Upsert Items
-    for (const item of items) {
-      await sql`
+    // Upsert Items with batch concurrency to stay well within serverless timeouts
+    const BATCH_CONCURRENCY = 25;
+    for (let i = 0; i < items.length; i += BATCH_CONCURRENCY) {
+      const batch = items.slice(i, i + BATCH_CONCURRENCY);
+      await Promise.all(batch.map(item => sql`
         INSERT INTO watch_history (
           id, user_id, type, watched_at, action,
           title, slug, trakt_id, imdb_id, tmdb_id,
@@ -143,7 +145,7 @@ export async function saveSyncData(user: UserProfile, items: WatchItem[]) {
           runtime_minutes = EXCLUDED.runtime_minutes,
           poster_url = EXCLUDED.poster_url,
           thumb_url = EXCLUDED.thumb_url;
-      `;
+      `));
     }
 
     return { mode: 'neon', count: items.length };

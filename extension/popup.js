@@ -118,24 +118,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       try {
         const targetUrl = targetUrlInput.value.replace(/\/$/, '');
-        const response = await fetch(`${targetUrl}/api/sync`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            user: res.user,
-            items: res.items
-          })
-        });
+        const items = res.items || [];
+        const CHUNK_SIZE = 150;
+        const totalChunks = Math.ceil(items.length / CHUNK_SIZE);
+        let totalUploaded = 0;
 
-        const json = await response.json();
-        if (!response.ok || !json.success) {
-          throw new Error(json.error || `HTTP ${response.status}`);
+        for (let i = 0; i < totalChunks; i++) {
+          const chunk = items.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+          const percent = 60 + Math.round(((i + 1) / totalChunks) * 38);
+          progressBar.style.width = `${percent}%`;
+          statusText.textContent = `Mengirim ke database (${i + 1}/${totalChunks})... ${Math.min((i + 1) * CHUNK_SIZE, items.length)}/${items.length} item`;
+
+          const response = await fetch(`${targetUrl}/api/sync`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user: res.user,
+              items: chunk
+            })
+          });
+
+          if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errText.slice(0, 120)}`);
+          }
+
+          const json = await response.json();
+          if (!json.success) {
+            throw new Error(json.error || `Gagal di batch ${i + 1}`);
+          }
+          totalUploaded += json.savedCount || chunk.length;
         }
 
         progressBar.style.width = '100%';
-        statusText.textContent = `Tersinkronisasi! +${json.savedCount || res.total} item ke database.`;
+        statusText.textContent = `Selesai! Berhasil menyimpan ${totalUploaded} item ke database cloud.`;
       } catch (err) {
         progressBar.style.width = '50%';
         statusText.textContent = `Gagal upload ke Web (${err.message}). Pastikan server Web berjalan!`;
