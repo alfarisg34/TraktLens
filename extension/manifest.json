@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "TraktLens - Summary Sync",
+  "version": "1.0.0",
+  "description": "Ekstrak riwayat tontonan Trakt.tv dan sinkronisasikan ke TraktLens Dashboard.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://app.trakt.tv/*",
+    "https://apiz.trakt.tv/*",
+    "http://localhost:*/*",
+    "https://*.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TraktLens Sync"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://app.trakt.tv/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

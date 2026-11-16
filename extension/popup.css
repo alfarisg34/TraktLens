@@ -1,0 +1,233 @@
+:root {
+  --bg-main: #0c0f17;
+  --bg-card: #151a26;
+  --border: #242c3d;
+  --primary: #ed1c24;
+  --primary-hover: #ff2a33;
+  --text-main: #f3f5f8;
+  --text-muted: #8b98a9;
+  --success: #10b981;
+  --error: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  width: 340px;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  padding: 16px;
+  font-size: 13px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.trakt-badge {
+  background: var(--primary);
+  color: white;
+  font-weight: 800;
+  font-size: 15px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  box-shadow: 0 0 10px rgba(237, 28, 36, 0.4);
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.status-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.status-pill.online .dot {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+
+.status-pill.offline .dot {
+  background: var(--error);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sublabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  display: block;
+}
+
+.input, .select {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus, .select:focus {
+  border-color: var(--primary);
+}
+
+.custom-dates {
+  background: #11151f;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+}
+
+.date-row {
+  display: flex;
+  gap: 8px;
+}
+
+.date-row > div {
+  flex: 1;
+}
+
+.date-input {
+  padding: 6px 8px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(237, 28, 36, 0.3);
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: #1c2333;
+  border-color: #3b465e;
+}
+
+.progress-box {
+  background: var(--bg-card);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 6px;
+  background: #232a3a;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
+
+.status-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.footer-actions {
+  margin-top: 4px;
+}
+
+.hidden {
+  display: none !important;
+}

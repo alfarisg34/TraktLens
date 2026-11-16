@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>TraktLens Sync</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo-area">
+      <div class="trakt-badge">T</div>
+      <div>
+        <h1 class="title">Trakt<span style="color: #ed1c24;">Lens</span></h1>
+        <p class="subtitle">Watch History & Analytics</p>
+      </div>
+    </div>
+    <div id="user-status-pill" class="status-pill checking">
+      <span class="dot"></span>
+      <span id="user-name">Memeriksa...</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="section">
+      <label class="label">Target Web Dashboard URL</label>
+      <input type="text" id="target-url" class="input" value="http://localhost:3000" placeholder="https://domain-anda.vercel.app">
+    </div>
+
+    <div class="section">
+      <label class="label">Rentang Waktu Ekstraksi</label>
+      <select id="date-range-preset" class="select">
+        <option value="all">Semua Riwayat (All Time)</option>
+        <option value="30">30 Hari Terakhir</option>
+        <option value="90">90 Hari Terakhir</option>
+        <option value="365">1 Tahun Terakhir</option>
+        <option value="custom">Kustom Rentang Tanggal...</option>
+      </select>
+    </div>
+
+    <div id="custom-date-container" class="section custom-dates hidden">
+      <div class="date-row">
+        <div>
+          <label class="sublabel">Mulai</label>
+          <input type="date" id="start-date" class="input date-input">
+        </div>
+        <div>
+          <label class="sublabel">Sampai</label>
+          <input type="date" id="end-date" class="input date-input">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <button id="btn-sync" class="btn btn-primary">
+        <span class="icon">🔄</span>
+        <span>Ekstrak & Sinkronkan</span>
+      </button>
+    </div>
+
+    <div id="progress-container" class="progress-box hidden">
+      <div class="progress-bar-bg">
+        <div id="progress-bar" class="progress-bar-fill"></div>
+      </div>
+      <p id="status-text" class="status-text">Menunggu...</p>
+    </div>
+
+    <div class="section footer-actions">
+      <button id="btn-open-web" class="btn btn-secondary">
+        <span>Buka Web Dashboard</span>
+        <span class="icon">↗</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
