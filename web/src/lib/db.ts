@@ -60,6 +60,12 @@ function writeLocalData(data: { user: UserProfile | null; items: WatchItem[] }) 
   fs.writeFileSync(LOCAL_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+let localWriteQueue: Promise<any> = Promise.resolve();
+
+function sleep(ms: number) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 let sqlClient: NeonQueryFunction<false, false> | null = null;
 
 export function getDb() {
@@ -150,25 +156,37 @@ export async function saveSyncData(user: UserProfile, items: WatchItem[]) {
 
     return { mode: 'neon', count: items.length };
   } else {
-    // Local File Fallback
-    const current = readLocalData();
-    const itemMap = new Map<string, WatchItem>();
-    
-    // Existing items
-    current.items.forEach(it => itemMap.set(String(it.id), it));
-    // New items
-    items.forEach(it => itemMap.set(String(it.id), it));
+    // Local File Fallback with sequential queue to prevent Windows file locking issues
+    const operation = localWriteQueue.then(async () => {
+      let current = readLocalData();
+      const itemMap = new Map<string, WatchItem>();
+      
+      current.items.forEach(it => itemMap.set(String(it.id), it));
+      items.forEach(it => itemMap.set(String(it.id), it));
 
-    const updatedItems = Array.from(itemMap.values()).sort(
-      (a, b) => new Date(b.watched_at).getTime() - new Date(a.watched_at).getTime()
-    );
+      const updatedItems = Array.from(itemMap.values()).sort(
+        (a, b) => new Date(b.watched_at).getTime() - new Date(a.watched_at).getTime()
+      );
 
-    writeLocalData({
-      user,
-      items: updatedItems,
+      const content = JSON.stringify({ user, items: updatedItems }, null, 2);
+
+      // Retry up to 5 times if Windows file lock is active
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          ensureLocalFile();
+          fs.writeFileSync(LOCAL_DATA_FILE, content, 'utf-8');
+          break;
+        } catch (err: any) {
+          if (attempt === 4) throw err;
+          await sleep(100 * (attempt + 1));
+        }
+      }
+
+      return { mode: 'local', count: items.length, total: updatedItems.length };
     });
 
-    return { mode: 'local', count: items.length, total: updatedItems.length };
+    localWriteQueue = operation.catch(() => {});
+    return await operation;
   }
 }
 

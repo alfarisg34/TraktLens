@@ -184,6 +184,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             throw new Error(json.error || `Gagal di batch ${i + 1}`);
           }
           totalUploaded += json.savedCount || chunk.length;
+
+          // Jeda kecil agar I/O disk lokal dan koneksi stabil
+          if (i < totalChunks - 1) {
+            await new Promise(r => setTimeout(r, 60));
+          }
         }
 
         progressBar.style.width = '100%';
