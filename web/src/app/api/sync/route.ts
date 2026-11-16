@@ -68,12 +68,21 @@ export async function POST(req: Request) {
         return `https://${path}`;
       };
 
+      const getValidDate = (val?: string) => {
+        if (val && !isNaN(new Date(val).getTime())) {
+          return new Date(val).toISOString();
+        }
+        return new Date().toISOString();
+      };
+
+      const watchedAt = getValidDate(raw.watched_at || raw.last_watched_at || raw.created_at || raw.updated_at);
+
       if (isMovie && movie) {
         return {
           id: raw.id,
           user_id: userProfile.id,
           type: 'movie',
-          watched_at: raw.watched_at,
+          watched_at: watchedAt,
           action: raw.action || 'watch',
           title: movie.title || 'Untitled Movie',
           slug: movie.ids?.slug || '',
@@ -90,7 +99,7 @@ export async function POST(req: Request) {
           id: raw.id,
           user_id: userProfile.id,
           type: 'episode',
-          watched_at: raw.watched_at,
+          watched_at: watchedAt,
           action: raw.action || 'watch',
           title: show.title || 'Untitled Show',
           slug: show.ids?.slug || '',
@@ -114,7 +123,7 @@ export async function POST(req: Request) {
         id: raw.id,
         user_id: userProfile.id,
         type: raw.type || 'movie',
-        watched_at: raw.watched_at || new Date().toISOString(),
+        watched_at: watchedAt,
         action: raw.action || 'watch',
         title: raw.title || 'Item',
         slug: '',

@@ -135,7 +135,7 @@ export async function saveSyncData(user: UserProfile, items: WatchItem[]) {
           show_title, show_slug, season_number, episode_number, episode_title,
           runtime_minutes, poster_url, thumb_url, genres
         ) VALUES (
-          ${item.id}, ${user.id}, ${item.type}, ${item.watched_at}, ${item.action || 'watch'},
+          ${item.id}, ${user.id}, ${item.type}, ${item.watched_at || new Date().toISOString()}, ${item.action || 'watch'},
           ${item.title}, ${item.slug}, ${item.trakt_id || null}, ${item.imdb_id || null}, ${item.tmdb_id || null},
           ${item.show_title || null}, ${item.show_slug || null}, ${item.season_number || null}, ${item.episode_number || null}, ${item.episode_title || null},
           ${item.runtime_minutes || 0}, ${item.poster_url || null}, ${item.thumb_url || null}, ${JSON.stringify(item.genres || [])}
