@@ -1,6 +1,6 @@
 // src/app/api/sync/route.ts
 import { NextResponse } from 'next/server';
-import { saveSyncData, WatchItem, UserProfile } from '@/lib/db';
+import { saveSyncData, getWatchHistory, WatchItem, UserProfile } from '@/lib/db';
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -11,6 +11,30 @@ export async function OPTIONS() {
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     },
   });
+}
+
+export async function GET() {
+  try {
+    const data = await getWatchHistory({ sort: 'latest' });
+    const latestItem = data.items[0];
+    return NextResponse.json({
+      success: true,
+      totalCount: data.items.length,
+      latestWatchedAt: latestItem?.watched_at || null,
+      latestTitle: latestItem?.title || null,
+      isNeon: data.isNeon,
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      }
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } }
+    );
+  }
 }
 
 export async function POST(req: Request) {

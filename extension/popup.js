@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const targetUrlInput = document.getElementById('target-url');
   const datePresetSelect = document.getElementById('date-range-preset');
+  const incrementalSyncInput = document.getElementById('incremental-sync');
   const customContainer = document.getElementById('custom-date-container');
   const startDateInput = document.getElementById('start-date');
   const endDateInput = document.getElementById('end-date');
@@ -82,12 +83,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     btnSync.disabled = true;
     progressContainer.classList.remove('hidden');
-    progressBar.style.width = '20%';
-    statusText.textContent = 'Mengambil data dari Trakt API...';
+    progressBar.style.width = '15%';
+    statusText.textContent = 'Mengecek status sinkronisasi...';
 
     // Hitung tanggal
     let startDate = null;
     let endDate = null;
+    let stopAtTimestamp = null;
+    const targetUrl = targetUrlInput.value.replace(/\/$/, '');
     const preset = datePresetSelect.value;
 
     if (preset === 'custom') {
@@ -98,13 +101,37 @@ document.addEventListener('DOMContentLoaded', async () => {
       const d = new Date();
       d.setDate(d.getDate() - days);
       startDate = d.toISOString();
+    } else if (incrementalSyncInput && incrementalSyncInput.checked) {
+      // Smart Incremental Sync: cek timestamp tontonan terakhir di database
+      try {
+        statusText.textContent = 'Mengecek tontonan terakhir di database...';
+        const checkRes = await fetch(`${targetUrl}/api/sync`);
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData.latestWatchedAt) {
+            stopAtTimestamp = checkData.latestWatchedAt;
+            const lastDate = new Date(stopAtTimestamp).toLocaleString('id-ID', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            statusText.textContent = `Sinkronisasi Cerdas: mengambil data baru sejak ${lastDate}...`;
+          }
+        }
+      } catch (e) {
+        console.log('Incremental check skipped:', e.message);
+      }
     }
 
+    progressBar.style.width = '30%';
     chrome.tabs.sendMessage(activeTab.id, {
       action: 'EXTRACT_HISTORY',
       startDate,
       endDate,
-      maxItems: 3000
+      stopAtTimestamp,
+      maxItems: 50000
     }, async (res) => {
       if (chrome.runtime.lastError || !res || !res.success) {
         progressBar.style.width = '0%';
@@ -113,8 +140,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      if (res.total === 0) {
+        progressBar.style.width = '100%';
+        statusText.textContent = 'Semua data sudah mutakhir! Tidak ada tontonan baru untuk disinkronkan.';
+        btnSync.disabled = false;
+        return;
+      }
+
       progressBar.style.width = '60%';
-      statusText.textContent = `Berhasil mengekstrak ${res.total} item. Mengirim ke Web...`;
+      statusText.textContent = `Ditemukan ${res.total} tontonan baru. Mengirim ke Web...`;
 
       try {
         const targetUrl = targetUrlInput.value.replace(/\/$/, '');

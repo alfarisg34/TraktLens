@@ -26,11 +26,12 @@ function getTraktSession() {
   }
 }
 
-async function fetchHistoryBatch({ accessToken, clientId, startDate, endDate, maxItems = 1000, onProgress }) {
+async function fetchHistoryBatch({ accessToken, clientId, startDate, endDate, stopAtTimestamp, maxItems = 50000, onProgress }) {
   const items = [];
   let page = 1;
   const limit = 100;
   let hasMore = true;
+  const stopDateMs = stopAtTimestamp ? new Date(stopAtTimestamp).getTime() : null;
 
   while (hasMore && items.length < maxItems) {
     const params = new URLSearchParams({
@@ -68,7 +69,19 @@ async function fetchHistoryBatch({ accessToken, clientId, startDate, endDate, ma
       break;
     }
 
-    items.push(...data);
+    if (stopDateMs) {
+      for (const item of data) {
+        const itemDateMs = new Date(item.watched_at).getTime();
+        if (itemDateMs <= stopDateMs) {
+          hasMore = false;
+          break;
+        }
+        items.push(item);
+      }
+      if (!hasMore) break;
+    } else {
+      items.push(...data);
+    }
 
     // Cek header pagination jika ada
     const totalPages = parseInt(res.headers.get('x-pagination-page-count') || '1', 10);
@@ -104,7 +117,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           clientId: session.user.clientId,
           startDate: request.startDate,
           endDate: request.endDate,
-          maxItems: request.maxItems || 2000
+          stopAtTimestamp: request.stopAtTimestamp,
+          maxItems: request.maxItems || 50000
         });
 
         sendResponse({
