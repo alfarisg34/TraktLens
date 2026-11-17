@@ -37,7 +37,7 @@ export default function ChangelogPage() {
             <span className="text-[11px] text-[#768496] font-medium hidden sm:inline">Versi Sistem Aktif:</span>
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#ed1c24]/10 text-[#ed1c24] border border-[#ed1c24]/30 shadow-sm shadow-[#ed1c24]/20">
               <Tag className="w-3 h-3" />
-              <span>v0.1.0</span>
+              <span>v0.3.0</span>
             </div>
           </div>
         </div>
@@ -88,6 +88,154 @@ export default function ChangelogPage() {
         {/* Tab Content: Rilis Versi Resmi */}
         {activeTab === 'releases' && (
           <div className="space-y-8">
+            {/* Version Block v0.3.0 */}
+            <article className="bg-[#121622] border border-[#1d2537] rounded-xl p-6 sm:p-8 space-y-6 shadow-xl shadow-black/40 relative overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2234] pb-5">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg sm:text-xl font-black text-white px-3 py-1 rounded-lg bg-[#ed1c24] shadow-md shadow-[#ed1c24]/30">
+                    v0.3.0
+                  </span>
+                  <div>
+                    <h2 className="text-base font-bold text-white">Version 0.3.0 (Highlight & Recap Release)</h2>
+                    <div className="flex items-center gap-2 text-xs text-[#7e8d9f] mt-0.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#5e6d80]" />
+                      <span>2026-11-17</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    LATEST RELEASE
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
+                  Highlight & Rekap Judul (1 Card / Series + Film Normal), Format Tampilan Multi-Mode, dan Metadata Episode Lengkap
+                </h3>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-5">
+                {/* FEAT */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <Code2 className="w-3 h-3" />
+                      <span>FEAT</span>
+                    </span>
+                    <h4 className="text-xs font-bold text-white">Mode Highlight & Rekap Judul (1 Card per Series + Film Normal)</h4>
+                  </div>
+                  <p className="text-xs text-[#8e9cae] leading-relaxed pl-7">
+                    Menyajikan ringkasan tontonan di mana seluruh episode dari satu serial televisi otomatis dikelompokkan ke dalam <b>1 kartu per judul utama</b> lengkap dengan badge <code>Series</code> ungu, counter total episode, total jam tontonan, daftar musim (misal: <i>Musim 1, 2, 3</i>), dan waktu tonton terakhir. Dilengkapi accordion interaktif <code>Daftar X Episode Ditonton ▼</code> untuk melihat rincian episode.
+                  </p>
+                </div>
+
+                {/* FEAT */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <Code2 className="w-3 h-3" />
+                      <span>FEAT</span>
+                    </span>
+                    <h4 className="text-xs font-bold text-white">Tiga Format Tampilan Fleksibel (Per Hari, Semua Log, Rekap Judul)</h4>
+                  </div>
+                  <p className="text-xs text-[#8e9cae] leading-relaxed pl-7">
+                    Pengguna dapat dengan mudah beralih antara tampilan kronologis harian (<b>Per Hari</b>), log riwayat kontinyu (<b>Semua Log</b>), atau mode highlight ringkasan (<b>Rekap Judul</b>) langsung dari toolbar utama maupun panel slide-over Filter Drawer, dengan preferensi tersimpan di <code>localStorage</code>.
+                  </p>
+                </div>
+
+                {/* FEAT */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <Code2 className="w-3 h-3" />
+                      <span>FEAT</span>
+                    </span>
+                    <h4 className="text-xs font-bold text-white">Penyertaan Metadata Episode pada Jejak & Milestone Akun</h4>
+                  </div>
+                  <p className="text-xs text-[#8e9cae] leading-relaxed pl-7">
+                    Kartu <i>Tontonan Paling Baru</i> dan <i>Tontonan Terlama Tercatat</i> kini menyertakan rincian lengkap untuk tayangan serial: Judul Serial, Nomor Musim, Nomor Episode, dan Judul Episode (contoh: <code>Season 3 • Eps 7 - Phase Four</code>).
+                  </p>
+                </div>
+
+                {/* UI */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                      <Palette className="w-3 h-3" />
+                      <span>UI</span>
+                    </span>
+                    <h4 className="text-xs font-bold text-white">Banner Rekap Cerdas & Segmented Switcher</h4>
+                  </div>
+                  <p className="text-xs text-[#8e9cae] leading-relaxed pl-7">
+                    Banner interaktif di atas log riwayat yang merangkum jumlah judul unik dan tombol langsung menuju mode Rekap, serta penambahan sub-filter kategori (Semua, Series, Film) dan selector pengurutan.
+                  </p>
+                </div>
+              </div>
+            </article>
+
+            {/* Version Block v0.2.0 */}
+            <article className="bg-[#121622] border border-[#1d2537] rounded-xl p-6 sm:p-8 space-y-6 shadow-xl shadow-black/40 relative overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2234] pb-5">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg sm:text-xl font-black text-white px-3 py-1 rounded-lg bg-[#ed1c24] shadow-md shadow-[#ed1c24]/30">
+                    v0.2.0
+                  </span>
+                  <div>
+                    <h2 className="text-base font-bold text-white">Version 0.2.0 (Analytics & Background Sync)</h2>
+                    <div className="flex items-center gap-2 text-xs text-[#7e8d9f] mt-0.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#5e6d80]" />
+                      <span>2026-11-16</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    STABLE
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
+                  Background Service Worker Mandiri, Bento Grid Fakta Unik & Rekor Tontonan, dan Toggle Ranking Serial
+                </h3>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <Code2 className="w-3 h-3" />
+                      <span>FEAT</span>
+                    </span>
+                    <h4 className="text-xs font-bold text-white">Ekstraksi Mandiri via Manifest V3 Service Worker</h4>
+                  </div>
+                  <p className="text-xs text-[#8e9cae] leading-relaxed pl-7">
+                    Proses ekstraksi dan sinkronisasi berjalan 100% di latar belakang (background.js), kebal penutupan popup, dilengkapi badge persentase live di toolbar Chrome dan tombol pembatalan.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                      <Code2 className="w-3 h-3" />
+                      <span>FEAT</span>
+                    </span>
+                    <h4 className="text-xs font-bold text-white">Bento Grid Fakta Unik & Rekor Tontonan (10 Kartu)</h4>
+                  </div>
+                  <p className="text-xs text-[#8e9cae] leading-relaxed pl-7">
+                    Analitik superlatif komprehensif: Top 3 Film Terpanjang & Terpendek, toggle ranking serial favorit (Episode vs Durasi), rekor maraton tontonan realistis, analisis kebiasaan menonton, dan rasio film vs serial.
+                  </p>
+                </div>
+              </div>
+            </article>
+
             {/* Version Block v0.1.0 */}
             <article className="bg-[#121622] border border-[#1d2537] rounded-xl p-6 sm:p-8 space-y-6 shadow-xl shadow-black/40 relative overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1b2234] pb-5">

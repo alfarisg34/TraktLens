@@ -2,7 +2,7 @@
 
 Sistem pelacakan dan analisis riwayat tontonan personal dari [Trakt.tv](https://app.trakt.tv) dengan desain antarmuka bergaya resmi Trakt (Dark Theme + Red Accent), terdiri dari:
 1. **Chrome Extension (TraktLens Sync)**: Ekstraktor otomatis riwayat tontonan langsung dari sesi aktif Trakt.
-2. **Next.js Web Dashboard (TraktLens Web)**: Ringkasan tontonan (jumlah film, serial, total durasi, jam tonton presisi, dan filter tanggal/tahun dinamis).
+2. **Next.js Web Dashboard (TraktLens Web)**: Ringkasan tontonan (jumlah film, serial, total durasi, jam tonton presisi, filter tanggal/tahun dinamis, serta mode Highlight & Rekap Judul di mana serial terkelompok menjadi 1 kartu per judul utama).
 3. **Penyimpanan Fleksibel**: Otomatis menggunakan penyimpanan file lokal (`.data/history.json`), dan langsung beralih ke **Neon PostgreSQL** saat `DATABASE_URL` diisi.
 
 ---

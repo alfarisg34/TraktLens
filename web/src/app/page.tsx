@@ -35,7 +35,8 @@ import {
   Activity,
   Percent,
   ArrowRight,
-  Trash2
+  Trash2,
+  LayoutGrid
 } from 'lucide-react';
 
 interface WatchItem {
@@ -54,6 +55,25 @@ interface WatchItem {
   poster_url?: string;
   thumb_url?: string;
   genres?: string[];
+}
+
+interface RecapItem {
+  key: string;
+  type: 'show' | 'movie';
+  title: string;
+  slug: string;
+  show_slug?: string;
+  poster_url?: string | null;
+  thumb_url?: string | null;
+  genres: string[];
+  totalMinutes: number;
+  formattedHours: string;
+  latestWatchedAt: string;
+  watchCount: number;
+  movieItem?: WatchItem;
+  episodesCount: number;
+  seasons: number[];
+  episodes: WatchItem[];
 }
 
 interface SummaryData {
@@ -195,6 +215,10 @@ interface FunFactsData {
   timelineMilestone?: {
     firstWatched: {
       title: string;
+      show_title?: string | null;
+      season_number?: number | null;
+      episode_number?: number | null;
+      episode_title?: string | null;
       type: string;
       watched_at: string;
       poster_url?: string | null;
@@ -202,6 +226,10 @@ interface FunFactsData {
     } | null;
     latestWatched: {
       title: string;
+      show_title?: string | null;
+      season_number?: number | null;
+      episode_number?: number | null;
+      episode_title?: string | null;
       type: string;
       watched_at: string;
       poster_url?: string | null;
@@ -234,6 +262,46 @@ export default function Dashboard() {
   const [durationFilter, setDurationFilter] = useState<'all' | 'short' | 'medium' | 'long'>('all');
   const [sortOrder, setSortOrder] = useState<'latest' | 'oldest' | 'runtime_desc' | 'runtime_asc'>('latest');
   const [searchQuery, setSearchQuery] = useState('');
+  const [groupByDate, setGroupByDate] = useState<boolean>(true);
+  const [viewMode, setViewMode] = useState<'daily' | 'flat' | 'recap'>('daily');
+  const [recapTypeFilter, setRecapTypeFilter] = useState<'all' | 'show' | 'movie'>('all');
+  const [recapSort, setRecapSort] = useState<'latest' | 'count_desc' | 'duration_desc' | 'title_asc'>('latest');
+  const [expandedShowKey, setExpandedShowKey] = useState<string | null>(null);
+
+  // Restore view mode preference from localStorage
+  useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem('traktlens_view_mode');
+      if (savedMode === 'daily' || savedMode === 'flat' || savedMode === 'recap') {
+        setViewMode(savedMode);
+        setGroupByDate(savedMode === 'daily');
+      } else {
+        const saved = localStorage.getItem('traktlens_group_by_date');
+        if (saved !== null) {
+          const isDaily = saved === 'true';
+          setGroupByDate(isDaily);
+          setViewMode(isDaily ? 'daily' : 'flat');
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleSetViewMode = (mode: 'daily' | 'flat' | 'recap') => {
+    setViewMode(mode);
+    setGroupByDate(mode === 'daily');
+    try {
+      localStorage.setItem('traktlens_view_mode', mode);
+      localStorage.setItem('traktlens_group_by_date', String(mode === 'daily'));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleToggleGrouping = (val: boolean) => {
+    handleSetViewMode(val ? 'daily' : 'flat');
+  };
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -360,10 +428,10 @@ export default function Dashboard() {
     return preset.startsWith('year-') ? parseInt(preset.replace('year-', ''), 10) : null;
   }, [preset]);
 
-  // Group items by local Date
-  const filteredAndGrouped = useMemo(() => {
+  // Filter items by search query
+  const filteredItems = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    const filtered = items.filter(it => {
+    return items.filter(it => {
       if (!q) return true;
       return (
         it.title?.toLowerCase().includes(q) ||
@@ -371,9 +439,12 @@ export default function Dashboard() {
         it.show_title?.toLowerCase().includes(q)
       );
     });
+  }, [items, searchQuery]);
 
+  // Group items by local Date
+  const groupedByDate = useMemo(() => {
     const groups: { [dateStr: string]: WatchItem[] } = {};
-    filtered.forEach(it => {
+    filteredItems.forEach(it => {
       const d = new Date(it.watched_at);
       const dateKey = d.toLocaleDateString('id-ID', {
         weekday: 'long',
@@ -386,7 +457,430 @@ export default function Dashboard() {
     });
 
     return groups;
-  }, [items, searchQuery]);
+  }, [filteredItems]);
+
+  // Label periode aktif untuk judul Highlight & Rekap
+  const activePeriodLabel = useMemo(() => {
+    if (preset === '7d') return '7 Hari Terakhir';
+    if (preset === '30d') return '30 Hari Terakhir';
+    if (preset.startsWith('year-')) return `Tahun ${preset.replace('year-', '')}`;
+    if (startDate || endDate) {
+      if (startDate && endDate) return `${startDate} s/d ${endDate}`;
+      if (startDate) return `Sejak ${startDate}`;
+      return `Hingga ${endDate}`;
+    }
+    return 'Sepanjang Waktu (Semua)';
+  }, [preset, startDate, endDate]);
+
+  // Agregasi item untuk Highlight & Rekap: Series menjadi 1 card per judul, Film normal
+  const recapData = useMemo(() => {
+    const map: { [key: string]: RecapItem } = {};
+    let totalEpisodes = 0;
+    let totalMovieCount = 0;
+    let totalSeriesCount = 0;
+
+    filteredItems.forEach(it => {
+      if (it.type === 'episode') {
+        totalEpisodes++;
+        const showKey = (it.show_slug || it.show_title || it.title || 'unknown-show').toLowerCase();
+        if (!map[showKey]) {
+          totalSeriesCount++;
+          map[showKey] = {
+            key: showKey,
+            type: 'show',
+            title: it.show_title || it.title,
+            slug: it.show_slug || it.slug,
+            show_slug: it.show_slug || it.slug,
+            poster_url: it.poster_url || it.thumb_url,
+            thumb_url: it.thumb_url || it.poster_url,
+            genres: it.genres ? [...it.genres] : [],
+            totalMinutes: 0,
+            formattedHours: '',
+            latestWatchedAt: it.watched_at,
+            watchCount: 0,
+            episodesCount: 0,
+            seasons: [],
+            episodes: [],
+          };
+        }
+
+        const entry = map[showKey];
+        entry.episodesCount += 1;
+        entry.totalMinutes += (it.runtime_minutes || 0);
+        entry.episodes.push(it);
+
+        if (it.season_number && !entry.seasons.includes(it.season_number)) {
+          entry.seasons.push(it.season_number);
+        }
+
+        if (new Date(it.watched_at).getTime() > new Date(entry.latestWatchedAt).getTime()) {
+          entry.latestWatchedAt = it.watched_at;
+          if (it.poster_url) entry.poster_url = it.poster_url;
+          if (it.thumb_url) entry.thumb_url = it.thumb_url;
+        }
+
+        if (it.genres) {
+          it.genres.forEach(g => {
+            if (!entry.genres.includes(g)) entry.genres.push(g);
+          });
+        }
+      } else {
+        totalMovieCount++;
+        const movieKey = (it.slug || it.title || String(it.id)).toLowerCase();
+        if (!map[movieKey]) {
+          map[movieKey] = {
+            key: movieKey,
+            type: 'movie',
+            title: it.title,
+            slug: it.slug,
+            poster_url: it.poster_url || it.thumb_url,
+            thumb_url: it.thumb_url || it.poster_url,
+            genres: it.genres ? [...it.genres] : [],
+            totalMinutes: 0,
+            formattedHours: '',
+            latestWatchedAt: it.watched_at,
+            watchCount: 0,
+            episodesCount: 0,
+            seasons: [],
+            episodes: [],
+            movieItem: it,
+          };
+        }
+
+        const entry = map[movieKey];
+        entry.watchCount += 1;
+        entry.totalMinutes += (it.runtime_minutes || 0);
+        if (new Date(it.watched_at).getTime() > new Date(entry.latestWatchedAt).getTime()) {
+          entry.latestWatchedAt = it.watched_at;
+          entry.movieItem = it;
+        }
+        if (it.genres) {
+          it.genres.forEach(g => {
+            if (!entry.genres.includes(g)) entry.genres.push(g);
+          });
+        }
+      }
+    });
+
+    const list = Object.values(map).map(item => {
+      if (item.episodes.length > 0) {
+        item.episodes.sort((a, b) => new Date(b.watched_at).getTime() - new Date(a.watched_at).getTime());
+      }
+      const hrs = Math.floor(item.totalMinutes / 60);
+      const mins = item.totalMinutes % 60;
+      item.formattedHours = hrs > 0 ? `${hrs}j ${mins}m` : `${mins}m`;
+      return item;
+    });
+
+    return {
+      items: list,
+      totalShows: totalSeriesCount,
+      totalMovies: Object.values(map).filter(x => x.type === 'movie').length,
+      totalEpisodes,
+    };
+  }, [filteredItems]);
+
+  // Filter & sort list pada tampilan Highlight & Rekap
+  const filteredAndSortedRecap = useMemo(() => {
+    let list = [...recapData.items];
+
+    if (recapTypeFilter === 'show') {
+      list = list.filter(it => it.type === 'show');
+    } else if (recapTypeFilter === 'movie') {
+      list = list.filter(it => it.type === 'movie');
+    }
+
+    if (recapSort === 'latest') {
+      list.sort((a, b) => new Date(b.latestWatchedAt).getTime() - new Date(a.latestWatchedAt).getTime());
+    } else if (recapSort === 'count_desc') {
+      list.sort((a, b) => {
+        const countA = a.type === 'show' ? a.episodesCount : a.watchCount;
+        const countB = b.type === 'show' ? b.episodesCount : b.watchCount;
+        return countB - countA;
+      });
+    } else if (recapSort === 'duration_desc') {
+      list.sort((a, b) => b.totalMinutes - a.totalMinutes);
+    } else if (recapSort === 'title_asc') {
+      list.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    return list;
+  }, [recapData, recapTypeFilter, recapSort]);
+
+  // Helper renderer untuk kartu riwayat media (Trakt Card)
+  const renderWatchCard = (item: WatchItem, showDate: boolean = false) => {
+    const isEpisode = item.type === 'episode';
+    const watchDate = new Date(item.watched_at);
+    const watchTimeStr = watchDate.toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const dateShortStr = watchDate.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+    });
+
+    const traktUrl = isEpisode
+      ? `https://app.trakt.tv/shows/${item.show_slug}?view=episode&season=${item.season_number}&episode=${item.episode_number}`
+      : `https://app.trakt.tv/movies/${item.slug}`;
+
+    const imageUrl = item.thumb_url || item.poster_url || '/placeholder.png';
+
+    return (
+      <div
+        key={item.id}
+        className="group bg-[#121622] border border-[#1c2436] hover:border-[#ed1c24]/50 rounded-xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/60"
+      >
+        {/* Cover (16:9 like Trakt history cards) */}
+        <div className="relative w-full aspect-[16/9] bg-[#0c101a] overflow-hidden">
+          <img
+            src={imageUrl}
+            alt={item.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
+
+          {/* Top Tag (Waktu Jam / Tanggal Tonton) */}
+          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded text-[11px] font-bold text-white border border-white/10 shadow-sm">
+            <Clock className="w-3 h-3 text-[#ed1c24]" />
+            <span>{showDate ? `${dateShortStr} • ${watchTimeStr} WIB` : `${watchTimeStr} WIB`}</span>
+          </div>
+
+          {/* Runtime Duration Badge */}
+          {item.runtime_minutes > 0 && (
+            <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+              {item.runtime_minutes} min
+            </div>
+          )}
+
+          {/* Trakt Direct Link Button */}
+          <a
+            href={traktUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/70 text-white/80 hover:text-white hover:bg-[#ed1c24] transition opacity-0 group-hover:opacity-100 shadow"
+            title="Buka di Trakt.tv"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        {/* Card Footer Info */}
+        <div className="p-3.5 flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="text-[13px] font-bold text-white line-clamp-1 group-hover:text-[#ed1c24] transition">
+                {item.title}
+              </h4>
+              <div className="flex items-center gap-1 shrink-0">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteItem(item.id, item.title);
+                  }}
+                  className="text-[#4e5c70] hover:text-[#ef4444] transition p-0.5 cursor-pointer opacity-0 group-hover:opacity-100"
+                  title="Hapus riwayat tontonan ini dari database"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+                <button 
+                  className="text-[#5a6a7e] hover:text-[#ed1c24] transition p-0.5 cursor-pointer"
+                  title="Rating"
+                >
+                  <Star className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {isEpisode ? (
+              <p className="text-xs text-[#7e8d9f] mt-0.5 line-clamp-1">
+                <span className="font-semibold text-white/90">
+                  M{item.season_number} • E{item.episode_number}
+                </span>
+                {item.episode_title && (
+                  <span className="text-[#a4b3c4]"> - {item.episode_title}</span>
+                )}
+              </p>
+            ) : (
+              <p className="text-xs text-emerald-400 font-semibold mt-0.5">
+                Film
+              </p>
+            )}
+          </div>
+
+          {item.genres && item.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-3">
+              {item.genres.slice(0, 3).map((g) => (
+                <span
+                  key={g}
+                  className="text-[10px] font-medium bg-[#171e2c] border border-[#20293c] text-[#7e8d9f] px-2 py-0.5 rounded capitalize"
+                >
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Helper renderer untuk kartu Highlight & Rekap (1 Card / Series + Film)
+  const renderRecapCard = (item: RecapItem) => {
+    const isShow = item.type === 'show';
+    const lastDate = new Date(item.latestWatchedAt);
+    const lastDateStr = lastDate.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: lastDate.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+    });
+
+    const traktUrl = isShow
+      ? `https://app.trakt.tv/shows/${item.show_slug || item.slug}`
+      : `https://app.trakt.tv/movies/${item.slug}`;
+
+    const imageUrl = item.thumb_url || item.poster_url || '/placeholder.png';
+    const isExpanded = expandedShowKey === item.key;
+
+    return (
+      <div
+        key={item.key}
+        className="group bg-[#121622] border border-[#1c2436] hover:border-[#ed1c24]/50 rounded-xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/60"
+      >
+        {/* Cover 16:9 */}
+        <div className="relative w-full aspect-[16/9] bg-[#0c101a] overflow-hidden">
+          <img
+            src={imageUrl}
+            alt={item.title}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
+
+          {/* Top-Left Tag: Type Badge */}
+          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[11px] font-bold border border-white/10 shadow-sm">
+            {isShow ? (
+              <>
+                <Tv className="w-3 h-3 text-purple-400" />
+                <span className="text-purple-300">Series</span>
+              </>
+            ) : (
+              <>
+                <Film className="w-3 h-3 text-emerald-400" />
+                <span className="text-emerald-300">Film</span>
+              </>
+            )}
+          </div>
+
+          {/* Bottom-Left Tag: Last Watched Date */}
+          <div className="absolute bottom-2 left-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-medium text-[#c4d1e0] border border-white/10">
+            Terakhir: {lastDateStr}
+          </div>
+
+          {/* Bottom-Right Tag: Total Episodes & Runtime */}
+          <div className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+            {isShow 
+              ? `${item.episodesCount} Eps • ${item.formattedHours}`
+              : item.formattedHours || `${item.totalMinutes} min`
+            }
+          </div>
+
+          {/* Trakt Link Button */}
+          <a
+            href={traktUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/70 text-white/80 hover:text-white hover:bg-[#ed1c24] transition opacity-0 group-hover:opacity-100 shadow"
+            title="Buka di Trakt.tv"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        {/* Card Body */}
+        <div className="p-3.5 flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="text-[13px] font-bold text-white line-clamp-1 group-hover:text-[#ed1c24] transition" title={item.title}>
+                {item.title}
+              </h4>
+              {!isShow && item.watchCount > 1 && (
+                <span className="text-[10px] font-bold bg-[#ed1c24]/20 text-[#ed1c24] border border-[#ed1c24]/30 px-1.5 py-0.5 rounded shrink-0">
+                  {item.watchCount}x tonton
+                </span>
+              )}
+            </div>
+
+            {isShow ? (
+              <p className="text-xs text-[#7e8d9f] mt-1 line-clamp-1">
+                <span className="font-semibold text-rose-300">
+                  Musim {item.seasons.sort((a, b) => a - b).join(', ')}
+                </span>
+                <span className="text-[#a4b3c4]"> • {item.episodesCount} episode ({item.formattedHours})</span>
+              </p>
+            ) : (
+              <p className="text-xs text-emerald-400 font-semibold mt-1">
+                Film • {item.totalMinutes} menit
+              </p>
+            )}
+          </div>
+
+          {/* Genres */}
+          {item.genres && item.genres.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-3">
+              {item.genres.slice(0, 3).map((g) => (
+                <span
+                  key={g}
+                  className="text-[10px] font-medium bg-[#171e2c] border border-[#20293c] text-[#7e8d9f] px-2 py-0.5 rounded capitalize"
+                >
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Episode Breakdown Accordion for Series */}
+          {isShow && item.episodes.length > 0 && (
+            <div className="mt-3 pt-2.5 border-t border-[#1b2335]">
+              <button
+                type="button"
+                onClick={() => setExpandedShowKey(isExpanded ? null : item.key)}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-[#0e131f] hover:bg-[#161d2d] border border-[#1d273a] text-[11px] font-semibold text-[#8e9cae] hover:text-white transition flex items-center justify-between cursor-pointer"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#ed1c24]" />
+                  <span>Daftar {item.episodesCount} Episode Ditonton</span>
+                </span>
+                {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-white" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {isExpanded && (
+                <div className="mt-2 p-2 bg-[#080b11] rounded-lg border border-[#1b2234] max-h-48 overflow-y-auto space-y-1.5 scrollbar-thin">
+                  {item.episodes.map((ep) => (
+                    <div
+                      key={ep.id}
+                      className="flex items-center justify-between gap-2 p-1.5 rounded hover:bg-[#121622] text-[11px] transition"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="font-bold text-white text-[10px] bg-[#1a2130] px-1.5 py-0.5 rounded border border-[#263147] mr-1.5 shrink-0">
+                          M{ep.season_number}•E{ep.episode_number}
+                        </span>
+                        <span className="text-[#a4b3c4] truncate" title={ep.episode_title || ''}>
+                          {ep.episode_title || `Episode ${ep.episode_number}`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[#637286] shrink-0">
+                        {new Date(ep.watched_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#090c13] text-[#f0f3f8] antialiased relative">
@@ -410,7 +904,7 @@ export default function Dashboard() {
                   className="text-[10px] font-semibold bg-[#1a2130] text-[#8e9cae] hover:text-[#ed1c24] hover:border-[#ed1c24]/50 border border-[#27324a] px-2 py-0.5 rounded-full transition flex items-center gap-1"
                   title="Lihat Catatan Rilis & Log Versi"
                 >
-                  v0.1.0
+                  v0.3.0
                 </Link>
               </div>
               <p className="text-[11px] text-[#768496]">Personal Watch History & Analytics</p>
@@ -1211,10 +1705,20 @@ export default function Dashboard() {
                             <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider block">
                               Tontonan Terlama Tercatat
                             </span>
-                            <h4 className="text-xs font-bold text-white truncate" title={funFacts.timelineMilestone.firstWatched.title}>
-                              {funFacts.timelineMilestone.firstWatched.title}
+                            <h4 className="text-xs font-bold text-white truncate" title={funFacts.timelineMilestone.firstWatched.show_title || funFacts.timelineMilestone.firstWatched.title}>
+                              {funFacts.timelineMilestone.firstWatched.show_title || funFacts.timelineMilestone.firstWatched.title}
                             </h4>
-                            <span className="text-[10px] text-[#79889b]">
+                            {funFacts.timelineMilestone.firstWatched.type === 'episode' && (
+                              <p className="text-[11px] text-[#8e9cae] truncate mt-0.5" title={`Season ${funFacts.timelineMilestone.firstWatched.season_number ?? 1} • Eps ${funFacts.timelineMilestone.firstWatched.episode_number ?? 1}${funFacts.timelineMilestone.firstWatched.episode_title ? ` - ${funFacts.timelineMilestone.firstWatched.episode_title}` : ''}`}>
+                                <span className="font-semibold text-emerald-400">
+                                  Season {funFacts.timelineMilestone.firstWatched.season_number ?? 1} • Eps {funFacts.timelineMilestone.firstWatched.episode_number ?? 1}
+                                </span>
+                                {funFacts.timelineMilestone.firstWatched.episode_title && (
+                                  <span className="text-[#c4d1e0]"> - {funFacts.timelineMilestone.firstWatched.episode_title}</span>
+                                )}
+                              </p>
+                            )}
+                            <span className="text-[10px] text-[#79889b] block mt-0.5">
                               {funFacts.timelineMilestone.firstWatched.formattedDate} • {funFacts.timelineMilestone.firstWatched.type === 'movie' ? 'Film' : 'Episode'}
                             </span>
                           </div>
@@ -1231,10 +1735,20 @@ export default function Dashboard() {
                             <span className="text-[9px] font-bold text-[#ed1c24] uppercase tracking-wider block">
                               Tontonan Paling Baru
                             </span>
-                            <h4 className="text-xs font-bold text-white truncate" title={funFacts.timelineMilestone.latestWatched.title}>
-                              {funFacts.timelineMilestone.latestWatched.title}
+                            <h4 className="text-xs font-bold text-white truncate" title={funFacts.timelineMilestone.latestWatched.show_title || funFacts.timelineMilestone.latestWatched.title}>
+                              {funFacts.timelineMilestone.latestWatched.show_title || funFacts.timelineMilestone.latestWatched.title}
                             </h4>
-                            <span className="text-[10px] text-[#79889b]">
+                            {funFacts.timelineMilestone.latestWatched.type === 'episode' && (
+                              <p className="text-[11px] text-[#8e9cae] truncate mt-0.5" title={`Season ${funFacts.timelineMilestone.latestWatched.season_number ?? 1} • Eps ${funFacts.timelineMilestone.latestWatched.episode_number ?? 1}${funFacts.timelineMilestone.latestWatched.episode_title ? ` - ${funFacts.timelineMilestone.latestWatched.episode_title}` : ''}`}>
+                                <span className="font-semibold text-[#ed1c24]">
+                                  Season {funFacts.timelineMilestone.latestWatched.season_number ?? 1} • Eps {funFacts.timelineMilestone.latestWatched.episode_number ?? 1}
+                                </span>
+                                {funFacts.timelineMilestone.latestWatched.episode_title && (
+                                  <span className="text-[#c4d1e0]"> - {funFacts.timelineMilestone.latestWatched.episode_title}</span>
+                                )}
+                              </p>
+                            )}
+                            <span className="text-[10px] text-[#79889b] block mt-0.5">
                               {funFacts.timelineMilestone.latestWatched.formattedDate} • {funFacts.timelineMilestone.latestWatched.type === 'movie' ? 'Film' : 'Episode'}
                             </span>
                           </div>
@@ -1326,9 +1840,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Search Bar + Drawer Trigger */}
-          <div className="pt-3 border-t border-[#1b2234] flex items-center gap-3">
-            <div className="relative flex-1">
+          {/* Search Bar + View Mode Toggle + Drawer Trigger */}
+          <div className="pt-3 border-t border-[#1b2234] flex flex-wrap sm:flex-nowrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="w-4 h-4 absolute left-3.5 top-3 text-[#58687d]" />
               <input
                 type="text"
@@ -1347,10 +1861,53 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* View Mode Toggle: Per Hari vs Semua Log vs Rekap Judul */}
+            <div className="flex items-center bg-[#090c13] border border-[#1f283d] rounded-xl p-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleSetViewMode('daily')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'daily'
+                    ? 'bg-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/30'
+                    : 'text-[#8291a4] hover:text-white hover:bg-[#151c2a]'
+                }`}
+                title="Tampilkan riwayat log dipisah per hari"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Per Hari</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetViewMode('flat')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'flat'
+                    ? 'bg-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/30'
+                    : 'text-[#8291a4] hover:text-white hover:bg-[#151c2a]'
+                }`}
+                title="Tampilkan semua log tanpa dipisah per hari"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Semua Log</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSetViewMode('recap')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                  viewMode === 'recap'
+                    ? 'bg-[#ed1c24] text-white shadow-md shadow-[#ed1c24]/30 font-bold'
+                    : 'text-[#8291a4] hover:text-white hover:bg-[#151c2a]'
+                }`}
+                title="Highlight & Rekap Judul: Serial terkelompok jadi 1 kartu per judul + Film normal"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span className="font-bold">Rekap Judul</span>
+              </button>
+            </div>
+
             {/* Trakt Filter Drawer Trigger Button */}
             <button
               onClick={() => setIsDrawerOpen(true)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer border shrink-0 ${
                 activeFilterCount > 0
                   ? 'bg-[#ed1c24] text-white border-[#ed1c24] shadow-md shadow-[#ed1c24]/30'
                   : 'bg-[#151c2a] text-[#8e9cae] hover:text-white border-[#222c42] hover:bg-[#1e273a]'
@@ -1367,9 +1924,42 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Media Grid Grouped by Date */}
-        <section className="space-y-8">
-          {Object.keys(filteredAndGrouped).length === 0 ? (
+        {/* Media Grid & Recap Section */}
+        <section className="space-y-6">
+          {/* Quick Banner to switch to Recap when viewing Daily or Flat */}
+          {viewMode !== 'recap' && filteredItems.length > 0 && recapData.items.length > 0 && (
+            <div className="bg-[#101522] border border-[#1e273b] hover:border-[#ed1c24]/40 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 transition shadow-md shadow-black/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-[#ed1c24]/10 text-[#ed1c24] border border-[#ed1c24]/20 shrink-0">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xs font-bold text-white">
+                      Highlight Rekap: {recapData.items.length} Judul Tontonan
+                    </h3>
+                    <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20 font-semibold">
+                      {recapData.totalShows} Series ({recapData.totalEpisodes} Eps) • {recapData.totalMovies} Film
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#78889c] mt-0.5">
+                    Ingin melihat ringkasan di mana series digabung menjadi 1 kartu per judul?
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSetViewMode('recap')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[#ed1c24] text-white hover:bg-[#d0141c] transition shadow-md shadow-[#ed1c24]/30 cursor-pointer shrink-0"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Buka Rekap Judul</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {filteredItems.length === 0 ? (
             <div className="bg-[#121622] border border-[#1d2537] rounded-xl p-12 text-center shadow-lg shadow-black/20">
               <PlayCircle className="w-12 h-12 text-[#3b475e] mx-auto mb-3" />
               <h3 className="text-base font-bold text-white">Tidak Ada Data Tontonan</h3>
@@ -1377,10 +1967,95 @@ export default function Dashboard() {
                 Tidak ada riwayat tontonan yang sesuai dengan filter. Coba ubah rentang tanggal atau klik tombol <b>Semua</b>.
               </p>
             </div>
-          ) : (
-            Object.entries(filteredAndGrouped).map(([dateLabel, groupItems]) => (
+          ) : viewMode === 'recap' ? (
+            /* Tampilan Highlight & Rekap Judul */
+            <div className="space-y-6">
+              {/* Header Bar Rekap */}
+              <div className="bg-[#121622] border border-[#1d2537] rounded-xl p-4 lg:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg shadow-black/20">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#ed1c24]" />
+                      <span>Highlight & Rekap Judul</span>
+                    </h2>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#ed1c24]/10 text-[#ed1c24] border border-[#ed1c24]/30">
+                      {activePeriodLabel}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#79889b] mt-1">
+                    Ringkasan tontonan terkelompok: <strong className="text-white">{recapData.totalShows} Series</strong> ({recapData.totalEpisodes} episode) dan <strong className="text-white">{recapData.totalMovies} Film</strong>.
+                  </p>
+                </div>
+
+                {/* Sub-Filter Tabs & Sort */}
+                <div className="flex items-center flex-wrap gap-2.5">
+                  <div className="flex items-center bg-[#090c13] border border-[#1e273b] p-1 rounded-xl">
+                    <button
+                      onClick={() => setRecapTypeFilter('all')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                        recapTypeFilter === 'all'
+                          ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/30'
+                          : 'text-[#7e8d9f] hover:text-white'
+                      }`}
+                    >
+                      Semua ({recapData.items.length})
+                    </button>
+                    <button
+                      onClick={() => setRecapTypeFilter('show')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        recapTypeFilter === 'show'
+                          ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/30'
+                          : 'text-[#7e8d9f] hover:text-white'
+                      }`}
+                    >
+                      <Tv className="w-3.5 h-3.5" />
+                      <span>Series ({recapData.totalShows})</span>
+                    </button>
+                    <button
+                      onClick={() => setRecapTypeFilter('movie')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                        recapTypeFilter === 'movie'
+                          ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/30'
+                          : 'text-[#7e8d9f] hover:text-white'
+                      }`}
+                    >
+                      <Film className="w-3.5 h-3.5" />
+                      <span>Film ({recapData.totalMovies})</span>
+                    </button>
+                  </div>
+
+                  <select
+                    value={recapSort}
+                    onChange={(e) => setRecapSort(e.target.value as any)}
+                    className="px-3 py-1.5 bg-[#090c13] border border-[#1e273b] rounded-xl text-xs text-[#a0afc2] focus:border-[#ed1c24] outline-none cursor-pointer"
+                  >
+                    <option value="latest">Terbaru Ditonton</option>
+                    <option value="count_desc">Episode / Tontonan Terbanyak</option>
+                    <option value="duration_desc">Durasi Terlama</option>
+                    <option value="title_asc">Judul (A - Z)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Grid of Recap Cards */}
+              {filteredAndSortedRecap.length === 0 ? (
+                <div className="bg-[#121622] border border-[#1d2537] rounded-xl p-12 text-center shadow-lg shadow-black/20">
+                  <PlayCircle className="w-12 h-12 text-[#3b475e] mx-auto mb-3" />
+                  <h3 className="text-base font-bold text-white">Tidak Ada Judul Ditemukan</h3>
+                  <p className="text-xs text-[#79889b] max-w-md mx-auto mt-1">
+                    Tidak ada judul dalam kategori ini pada rentang waktu yang dipilih.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {filteredAndSortedRecap.map(item => renderRecapCard(item))}
+                </div>
+              )}
+            </div>
+          ) : viewMode === 'daily' ? (
+            /* Mode Per Hari */
+            Object.entries(groupedByDate).map(([dateLabel, groupItems]) => (
               <div key={dateLabel} className="space-y-4">
-                {/* Date Heading */}
                 <div className="flex items-center justify-between border-b border-[#1b2234] pb-2">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-[#ed1c24]" />
@@ -1391,123 +2066,28 @@ export default function Dashboard() {
                   </span>
                 </div>
 
-                {/* Trakt Style Card Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {groupItems.map((item) => {
-                    const isEpisode = item.type === 'episode';
-                    const watchDate = new Date(item.watched_at);
-                    const watchTimeStr = watchDate.toLocaleTimeString('id-ID', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    });
-
-                    const traktUrl = isEpisode
-                      ? `https://app.trakt.tv/shows/${item.show_slug}?view=episode&season=${item.season_number}&episode=${item.episode_number}`
-                      : `https://app.trakt.tv/movies/${item.slug}`;
-
-                    const imageUrl = item.thumb_url || item.poster_url || '/placeholder.png';
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="group bg-[#121622] border border-[#1c2436] hover:border-[#ed1c24]/50 rounded-xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/60"
-                      >
-                        {/* Cover (16:9 like Trakt history cards) */}
-                        <div className="relative w-full aspect-[16/9] bg-[#0c101a] overflow-hidden">
-                          <img
-                            src={imageUrl}
-                            alt={item.title}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            loading="lazy"
-                          />
-
-                          {/* Top Tag (Waktu Jam Tonton) */}
-                          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded text-[11px] font-bold text-white border border-white/10 shadow-sm">
-                            <Clock className="w-3 h-3 text-[#ed1c24]" />
-                            <span>{watchTimeStr} WIB</span>
-                          </div>
-
-                          {/* Runtime Duration Badge */}
-                          {item.runtime_minutes > 0 && (
-                            <div className="absolute bottom-2 right-2 bg-black/75 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
-                              {item.runtime_minutes} min
-                            </div>
-                          )}
-
-                          {/* Trakt Direct Link Button */}
-                          <a
-                            href={traktUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/70 text-white/80 hover:text-white hover:bg-[#ed1c24] transition opacity-0 group-hover:opacity-100 shadow"
-                            title="Buka di Trakt.tv"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        </div>
-
-                        {/* Card Footer Info */}
-                        <div className="p-3.5 flex-1 flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-start justify-between gap-2">
-                              <h4 className="text-[13px] font-bold text-white line-clamp-1 group-hover:text-[#ed1c24] transition">
-                                {item.title}
-                              </h4>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteItem(item.id, item.title);
-                                  }}
-                                  className="text-[#4e5c70] hover:text-[#ef4444] transition p-0.5 cursor-pointer opacity-0 group-hover:opacity-100"
-                                  title="Hapus riwayat tontonan ini dari database"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button 
-                                  className="text-[#5a6a7e] hover:text-[#ed1c24] transition p-0.5 cursor-pointer"
-                                  title="Rating"
-                                >
-                                  <Star className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {isEpisode ? (
-                              <p className="text-xs text-[#7e8d9f] mt-0.5 line-clamp-1">
-                                <span className="font-semibold text-white/90">
-                                  M{item.season_number} • E{item.episode_number}
-                                </span>
-                                {item.episode_title && (
-                                  <span className="text-[#a4b3c4]"> - {item.episode_title}</span>
-                                )}
-                              </p>
-                            ) : (
-                              <p className="text-xs text-emerald-400 font-semibold mt-0.5">
-                                Film
-                              </p>
-                            )}
-                          </div>
-
-                          {item.genres && item.genres.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-3">
-                              {item.genres.slice(0, 3).map((g) => (
-                                <span
-                                  key={g}
-                                  className="text-[10px] font-medium bg-[#171e2c] border border-[#20293c] text-[#7e8d9f] px-2 py-0.5 rounded capitalize"
-                                >
-                                  {g}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {groupItems.map((item) => renderWatchCard(item, false))}
                 </div>
               </div>
             ))
+          ) : (
+            /* Mode Semua Log (Tanpa Hari) */
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b border-[#1b2234] pb-2">
+                <div className="flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4 text-[#ed1c24]" />
+                  <h2 className="text-sm font-bold text-white tracking-wide">Semua Log (Tanpa Dipisah Hari)</h2>
+                </div>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-[#171d2b] border border-[#222c42] text-[#8796a8]">
+                  {filteredItems.length} Item
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredItems.map((item) => renderWatchCard(item, true))}
+              </div>
+            </div>
           )}
         </section>
       </main>
@@ -1550,6 +2130,51 @@ export default function Dashboard() {
 
             {/* Drawer Scrollable Content */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* 0. Format Tampilan Riwayat */}
+              <div className="space-y-2.5">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-[#79889b] block">
+                  Format Tampilan Riwayat
+                </label>
+                <div className="grid grid-cols-3 gap-2 bg-[#080b11] p-1 rounded-xl border border-[#1b2234]">
+                  <button
+                    type="button"
+                    onClick={() => handleSetViewMode('daily')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                      viewMode === 'daily'
+                        ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/40' 
+                        : 'text-[#7e8d9f] hover:text-white'
+                    }`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Per Hari</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetViewMode('flat')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                      viewMode === 'flat' 
+                        ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/40' 
+                        : 'text-[#7e8d9f] hover:text-white'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Semua Log</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetViewMode('recap')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1.5 ${
+                      viewMode === 'recap' 
+                        ? 'bg-[#ed1c24] text-white shadow-sm shadow-[#ed1c24]/40' 
+                        : 'text-[#7e8d9f] hover:text-white'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Rekap Judul</span>
+                  </button>
+                </div>
+              </div>
+
               {/* 1. Tipe Media (Segmented) */}
               <div className="space-y-2.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-[#79889b] block">

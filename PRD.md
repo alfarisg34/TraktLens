@@ -1,7 +1,7 @@
 # 📄 Product Requirements Document (PRD) — TraktLens
 
 **Nama Produk**: TraktLens  
-**Versi Saat Ini**: `v0.1.0` (Fase Beta / Awal)  
+**Versi Saat Ini**: `v0.3.0` (Fase Beta / Fitur Highlight & Rekap)  
 **Status**: Aktif dalam Pengembangan  
 **Owner**: `@alfarisg34`  
 **Repository**: [https://github.com/alfarisg34/TraktLens](https://github.com/alfarisg34/TraktLens)  
@@ -75,6 +75,14 @@ Di antarmuka standar Trakt.tv (terutama pengguna non-VIP), informasi riwayat ton
   * Tombol aksi langsung ke halaman resmi Trakt.tv.
 * **FR-WEB-04 (Halaman Changelog)**:
   * Menampilkan catatan rilis sistem resmi, breakdown perubahan berlabel (FEAT, FIX, UI, DOCS, TEST, PERF), dan aturan SemVer `X.Y.Z`.
+* **FR-WEB-05 (Highlight & Rekap Judul — 1 Card per Series)**:
+  * Mengelompokkan seluruh episode dari serial televisi yang sama dalam rentang filter menjadi **1 kartu per judul utama** (misal: puluhan episode menjadi satu kartu agregat).
+  * Menampilkan ringkasan total episode, total jam tontonan, musim yang ditonton, waktu tontonan episode terakhir, serta accordion interaktif untuk membuka daftar seluruh episode yang ditonton.
+  * Menampilkan tayangan film normal (1 kartu per film) dengan durasi menit dan penanda rewatch (`2x tonton`).
+  * Dilengkapi sub-filter instan (*Semua*, *Series Saja*, *Film Saja*) dan pengurutan dinamis (*Terbaru Ditonton*, *Episode Terbanyak*, *Durasi Terlama*, *A-Z*).
+* **FR-WEB-06 (Multi-Mode Display Switcher & Persistensi)**:
+  * Pengguna dapat memilih mode tampilan: **Per Hari** (kronologis per tanggal), **Semua Log** (kontinyu tanpa pemisah tanggal dengan label tanggal singkat), atau **Rekap Judul** (1 kartu per series + film).
+  * Tersedia di toolbar utama dan drawer filter, dengan preferensi tersimpan di `localStorage`.
 
 ---
 
@@ -96,16 +104,22 @@ Di antarmuka standar Trakt.tv (terutama pengguna non-VIP), informasi riwayat ton
 
 ## 5. Rencana Rilis & Versi
 
-* **v0.1.0 (Versi Saat Ini)**:
+* **v0.1.0 (Rilis Fondasi — Selesai)**:
   * Fondasi monorepo (`/extension` + `/web`).
   * Ekstraksi sesi OIDC Trakt & sinkronisasi bulk.
   * Dashboard Next.js dengan dark mode Trakt.
   * Filter dinamis per tahun & metrik agregasi.
   * Penyimpanan lokal offline & koneksi NeonDB.
-* **v0.2.0 (Target Berikutnya)**:
-  * Visualisasi grafik tren (Charts tontonan per hari/minggu & breakdown genre).
-  * Ekspor data ke JSON / CSV.
-  * Opsi tema kustom (Pure OLED Black vs Slate Trakt).
+* **v0.2.0 (Analytics & Background Sync — Selesai)**:
+  * Background Service Worker mandiri (`background.js`) dengan badge progress Chrome.
+  * Bento grid Fakta Unik & Rekor Tontonan (Top 3 Film Terpanjang/Terpendek, Rasio, Prime-Time).
+  * Filter rekor per tahun in-section & toggle ranking serial (Episode vs Durasi).
+* **v0.3.0 (Versi Saat Ini — Selesai)**:
+  * Mode Highlight & Rekap Judul (1 Card per Series + Film normal).
+  * Multi-Mode Switcher: *Per Hari*, *Semua Log*, *Rekap Judul*.
+  * Accordion rincian episode interaktif pada kartu series.
+  * Penyertaan metadata episode lengkap pada widget Jejak & Milestone Akun.
 * **v1.0.0 (Target Stabil)**:
+  * Visualisasi grafik tren interaktif (Charts mingguan/bulanan).
   * Fitur perbandingan tontonan tahun ke tahun (*Year-over-Year Comparison*).
-  * Dukungan autentikasi multi-user publik dengan login Trakt OAuth resmi opsional.
+  * Ekspor data ke JSON / CSV.

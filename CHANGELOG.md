@@ -46,6 +46,39 @@ Setiap catatan rilis dikelompokkan ke dalam label-label terstandarisasi:
 
 ## 🚀 Riwayat Rilis Resmi
 
+### [v0.3.0] — 2026-11-17
+> **Highlight & Rekap Judul (1 Card per Series + Film Normal), Format Tampilan Multi-Mode (Per Hari, Semua Log, Rekap Judul), dan Metadata Episode pada Jejak & Milestone Akun**
+
+#### `FEAT` (Fitur Baru)
+* **Highlight & Rekap Judul (1 Card per Series + Film Normal)**:
+  * Fitur baru untuk melihat ringkasan tontonan dalam rentang waktu yang dipilih, di mana seluruh episode dari satu serial televisi/anime otomatis dikelompokkan ke dalam **1 kartu per judul utama** (misalnya puluhan episode *Mushoku Tensei* digabung menjadi satu kartu informatif).
+  * **Informasi Agregat Komprehensif**: Menampilkan badge `📺 Series` ungu, jumlah episode ditonton, total durasi tontonan (jam & menit), daftar musim yang ditonton (misal: *Musim 1, 2, 3*), dan waktu tontonan episode paling mutakhir.
+  * **Accordion Rincian Episode Interaktif**: Kartu series dilengkapi tombol interaktif `Daftar X Episode Ditonton ▼` yang dapat dibuka untuk menampilkan seluruh episode yang ditonton dalam periode tersebut lengkap dengan nomor musim, nomor episode, judul episode, dan tanggal tonton.
+  * **Film Tampil Normal**: Tontonan film tetap tersaji normal (1 kartu per film) dengan badge `🎬 Film` emerald, durasi menit, dan label jika film tersebut di-rewatch (`2x tonton`).
+  * **Sub-Filter & Pengurutan Khusus Rekap**: Dilengkapi tab filter instan (*Semua*, *Series Saja*, *Film Saja*) serta selector pengurutan (*Terbaru Ditonton*, *Episode/Tontonan Terbanyak*, *Durasi Terlama*, dan *Alfabetis A-Z*).
+  * **Banner Notifikasi Cerdas**: Muncul banner highlight di atas daftar saat berada di mode kronologis yang merangkum jumlah judul unik dan menyediakan tombol pintas `[ Buka Rekap Judul → ]`.
+* **Tiga Pilihan Format Tampilan (Multi-Mode Switcher)**:
+  * **`📅 Per Hari`**: Tampilan default yang membagi riwayat secara kronologis per tanggal/hari.
+  * **`⊞ Semua Log`**: Tampilan riwayat penuh berkelanjutan tanpa pemisah header tanggal, dengan badge waktu cerdas yang menampilkan tanggal singkat (misal: `15 Nov • 01.33 WIB`).
+  * **`✨ Rekap Judul`**: Tampilan highlight terkelompok (1 kartu per series + film).
+  * Tersedia langsung di toolbar samping pencarian dan panel slide-over Filter Drawer, dengan preferensi tersimpan otomatis di `localStorage` browser.
+* **Penyertaan Metadata Episode Lengkap pada Jejak & Milestone Akun**:
+  * Widget *Jejak & Milestone Akun* kini menampilkan rincian serial jika tontonan tertua atau terbaru berjenis episode: mencakup Judul Serial, Musim, Episode, dan Judul Episode (misal: `Season 3 • Eps 7 - Phase Four`), bukan hanya nama serial dan label generik.
+  * Pembaruan endpoint backend `GET /api/history` untuk menyertakan `season_number`, `episode_number`, `episode_title`, dan `show_title` pada objek `timelineMilestone`.
+
+#### `UI` (Peningkatan Antarmuka)
+* Tiga tombol switcher tersegmentasi di toolbar utama berdesain dark-theme Trakt otentik.
+* Desain kartu rekap media 16:9 yang seimbang dan responsif dari smartphone hingga desktop.
+* Pembaruan badge versi sistem menjadi `v0.3.0`.
+
+#### `DOCS` (Dokumentasi)
+* Pembaruan dokumentasi teknis `CHANGELOG.md`, `PRD.md`, `README.md`, dan antarmuka `/changelog`.
+
+#### `TEST` (Pengujian & Validasi)
+* Verifikasi kompilasi `npm run build` Next.js 16 berhasil 100% tanpa galat TypeScript atau linting.
+
+---
+
 ### [v0.2.0] — 2026-11-16
 > **Background Service Worker, Bento Grid Fakta Unik & Rekor Tontonan, Toggle Ranking Serial, dan Branding Logo TraktLens**
 

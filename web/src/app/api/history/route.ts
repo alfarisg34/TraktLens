@@ -315,6 +315,10 @@ export async function GET(req: Request) {
 
     const firstWatched = validWatchedItems[0] ? {
       title: validWatchedItems[0].title,
+      show_title: validWatchedItems[0].show_title,
+      season_number: validWatchedItems[0].season_number,
+      episode_number: validWatchedItems[0].episode_number,
+      episode_title: validWatchedItems[0].episode_title,
       type: validWatchedItems[0].type,
       watched_at: validWatchedItems[0].watched_at,
       poster_url: validWatchedItems[0].poster_url || validWatchedItems[0].thumb_url,
@@ -323,6 +327,10 @@ export async function GET(req: Request) {
 
     const latestWatched = validWatchedItems.length > 0 ? {
       title: validWatchedItems[validWatchedItems.length - 1].title,
+      show_title: validWatchedItems[validWatchedItems.length - 1].show_title,
+      season_number: validWatchedItems[validWatchedItems.length - 1].season_number,
+      episode_number: validWatchedItems[validWatchedItems.length - 1].episode_number,
+      episode_title: validWatchedItems[validWatchedItems.length - 1].episode_title,
       type: validWatchedItems[validWatchedItems.length - 1].type,
       watched_at: validWatchedItems[validWatchedItems.length - 1].watched_at,
       poster_url: validWatchedItems[validWatchedItems.length - 1].poster_url || validWatchedItems[validWatchedItems.length - 1].thumb_url,
